@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 import { analyzeImageWithClaude, generateEmbedding } from '@/lib/ai'
 
 export async function POST(req: NextRequest) {
@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     const { id } = await req.json()
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-    const { data: image, error } = await supabaseAdmin
+    const { data: image, error } = await getSupabaseAdmin()
       .from('images')
       .select('id, r2_url, memo')
       .eq('id', id)
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     const searchText = [image.memo, aiDescription].filter(Boolean).join('\n')
     const embedding = await generateEmbedding(searchText)
 
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('images')
       .update({ ai_description: aiDescription, search_text: searchText, embedding })
       .eq('id', id)

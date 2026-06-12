@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 
 export async function GET(
   _req: NextRequest,
@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from('images')
       .select('id, r2_url, uploaded_at, memo, ai_description, is_active')
       .eq('id', id)
@@ -29,7 +29,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const { error } = await supabaseAdmin
+    const { error } = await getSupabaseAdmin()
       .from('images')
       .update({ is_active: false })
       .eq('id', id)

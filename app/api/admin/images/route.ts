@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 
 export async function GET() {
   try {
-    const { data: images, error } = await supabaseAdmin
+    const { data: images, error } = await getSupabaseAdmin()
       .from('images')
       .select('id, r2_url, uploaded_at, memo, ai_description, is_active')
       .order('uploaded_at', { ascending: false })
@@ -11,7 +11,7 @@ export async function GET() {
     if (error) throw error
 
     // Fetch feedback counts for each image
-    const { data: feedbacks } = await supabaseAdmin
+    const { data: feedbacks } = await getSupabaseAdmin()
       .from('image_feedback')
       .select('image_id, feedback')
 

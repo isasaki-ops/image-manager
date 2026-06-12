@@ -1,4 +1,4 @@
-import { supabaseAdmin, type SearchResult } from './supabase'
+import { getSupabaseAdmin, type SearchResult } from './supabase'
 import { generateEmbedding } from './ai'
 
 export async function searchImages(
@@ -7,7 +7,7 @@ export async function searchImages(
 ): Promise<SearchResult[]> {
   const queryVector = await generateEmbedding(query)
 
-  const { data, error } = await supabaseAdmin.rpc('search_images', {
+  const { data, error } = await getSupabaseAdmin().rpc('search_images', {
     query_vector: queryVector,
     match_limit: limit,
   })

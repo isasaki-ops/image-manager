@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
 import { uploadToR2 } from '@/lib/r2'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 import { analyzeImageWithClaude, generateEmbedding } from '@/lib/ai'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
     const r2Url = await uploadToR2(buffer, key, file.type)
 
-    const { data: image, error: insertError } = await supabaseAdmin
+    const { data: image, error: insertError } = await getSupabaseAdmin()
       .from('images')
       .insert({ r2_key: key, r2_url: r2Url, memo })
       .select('id, r2_url')
@@ -59,7 +59,7 @@ function analyzeInBackground(imageId: string, r2Url: string, memo: string | null
       const searchText = [memo, aiDescription].filter(Boolean).join('\n')
       const embedding = await generateEmbedding(searchText)
 
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('images')
         .update({ ai_description: aiDescription, search_text: searchText, embedding })
         .eq('id', imageId)

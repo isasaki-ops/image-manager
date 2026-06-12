@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 import CopyButton from './CopyButton'
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
 }
 
 async function getImage(id: string) {
-  const { data } = await supabaseAdmin
+  const { data } = await getSupabaseAdmin()
     .from('images')
     .select('id, r2_url, uploaded_at, memo, ai_description, is_active')
     .eq('id', id)
