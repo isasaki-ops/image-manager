@@ -1,11 +1,22 @@
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+// Lazy singletons — avoid throwing during module evaluation when env vars are absent
+let _anthropic: Anthropic | null = null
+let _openai: OpenAI | null = null
+
+function getAnthropic() {
+  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  return _anthropic
+}
+
+function getOpenAI() {
+  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  return _openai
+}
 
 export async function analyzeImageWithClaude(imageUrl: string): Promise<string> {
-  const response = await anthropic.messages.create({
+  const response = await getAnthropic().messages.create({
     model: 'claude-3-5-sonnet-20241022',
     max_tokens: 1024,
     system:
@@ -34,7 +45,7 @@ export async function analyzeImageWithClaude(imageUrl: string): Promise<string> 
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   const attempt = async () => {
-    const response = await openai.embeddings.create({
+    const response = await getOpenAI().embeddings.create({
       model: 'text-embedding-3-small',
       input: text,
     })
