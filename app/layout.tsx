@@ -27,7 +27,14 @@ export default function RootLayout({
       lang="ja"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {process.env.NODE_ENV === 'development' && (
+          <div className="w-full bg-orange-500 text-white text-center text-sm font-bold py-1 z-50">
+            ローカル版
+          </div>
+        )}
+        {children}
+      </body>
     </html>
   );
 }
