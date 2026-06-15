@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { v4 as uuidv4 } from 'uuid'
+
+export const maxDuration = 300
+import sizeOf from 'image-size'
 import { uploadToR2 } from '@/lib/r2'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { analyzeImageWithClaude, generateEmbedding } from '@/lib/ai'
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-const MAX_SIZE_BYTES = 10 * 1024 * 1024 // 10MB
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/tiff', 'image/bmp']
+const MAX_SIZE_BYTES = 100 * 1024 * 1024 // 100MB
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,25 +18,38 @@ export async function POST(req: NextRequest) {
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json(
-        { error: 'Unsupported file type. Use JPEG, PNG, WebP, or GIF.' },
-        { status: 400 }
-      )
-    }
     if (file.size > MAX_SIZE_BYTES) {
-      return NextResponse.json({ error: 'File exceeds 10MB limit' }, { status: 400 })
+      return NextResponse.json({ error: 'File exceeds 100MB limit' }, { status: 400 })
     }
 
-    const ext = file.type.split('/')[1].replace('jpeg', 'jpg')
-    const key = `${uuidv4()}.${ext}`
+    const originalName = file.name
+    const extFromName = originalName.includes('.') ? originalName.split('.').pop()! : 'bin'
+    const now = new Date()
+    const datePart = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const timePart = now.toTimeString().slice(0, 8).replace(/:/g, '')
+    const rand = Math.random().toString(36).slice(2, 6)
+    const key = `${datePart}_${timePart}_${rand}.${extFromName}`
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    const r2Url = await uploadToR2(buffer, key, file.type)
+    const isImage = IMAGE_TYPES.includes(file.type)
+
+    let image_width: number | null = null
+    let image_height: number | null = null
+    if (isImage) {
+      try {
+        const dimensions = sizeOf(buffer)
+        image_width = dimensions.width ?? null
+        image_height = dimensions.height ?? null
+      } catch {
+        // 取得できない場合はnullのまま
+      }
+    }
+
+    const r2Url = await uploadToR2(buffer, key, file.type || 'application/octet-stream')
 
     const { data: image, error: insertError } = await getSupabaseAdmin()
       .from('images')
-      .insert({ r2_key: key, r2_url: r2Url, memo })
+      .insert({ r2_key: key, r2_url: r2Url, memo, file_name: originalName, file_size: file.size, file_type: file.type, image_width, image_height })
       .select('id, r2_url')
       .single()
 
@@ -42,8 +57,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to save image record' }, { status: 500 })
     }
 
-    // Run AI analysis in the background after returning the response
-    analyzeInBackground(image.id, r2Url, memo)
+    if (isImage) {
+      analyzeInBackground(image.id, r2Url, memo)
+    }
 
     return NextResponse.json({ id: image.id, r2_url: image.r2_url })
   } catch (err) {

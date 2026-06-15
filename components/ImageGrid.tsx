@@ -6,6 +6,11 @@ interface ImageItem {
   uploaded_at: string
   memo: string | null
   ai_description?: string | null
+  file_name?: string | null
+  file_size?: number | null
+  file_type?: string | null
+  image_width?: number | null
+  image_height?: number | null
 }
 
 interface ImageGridProps {

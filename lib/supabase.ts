@@ -32,6 +32,11 @@ export type Image = {
   memo: string | null
   ai_description: string | null
   search_text: string | null
+  file_name: string | null
+  file_size: number | null
+  file_type: string | null
+  image_width: number | null
+  image_height: number | null
   is_active: boolean
 }
 
@@ -49,6 +54,11 @@ export type SearchResult = {
   uploaded_at: string
   memo: string | null
   ai_description: string | null
+  file_name: string | null
+  file_size: number | null
+  file_type: string | null
+  image_width: number | null
+  image_height: number | null
   vector_score: number
   feedback_score: number
   final_score: number

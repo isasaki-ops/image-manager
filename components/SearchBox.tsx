@@ -24,8 +24,8 @@ export default function SearchBox({ onSearch, isLoading }: SearchBoxProps) {
         type="text"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="例: 笑顔の女性が映った青い背景のバナー"
-        className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+        placeholder="例：取材名、キャラクター名、ライター名など"
+        className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white placeholder-gray-400"
       />
       <button
         type="submit"

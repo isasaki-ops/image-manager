@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
       // No query: return latest uploads
       const { data, error } = await getSupabaseAdmin()
         .from('images')
-        .select('id, r2_url, uploaded_at, memo, ai_description')
+        .select('id, r2_url, uploaded_at, memo, ai_description, file_name, file_size, file_type, image_width, image_height')
         .eq('is_active', true)
         .order('uploaded_at', { ascending: false })
         .limit(limit)

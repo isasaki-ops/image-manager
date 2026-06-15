@@ -4,15 +4,23 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import CopyButton from './CopyButton'
+import DeleteButton from './DeleteButton'
+import AiDescription from './AiDescription'
 
 interface Props {
   params: Promise<{ id: string }>
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 async function getImage(id: string) {
   const { data } = await getSupabaseAdmin()
     .from('images')
-    .select('id, r2_url, uploaded_at, memo, ai_description, is_active')
+    .select('id, r2_url, uploaded_at, memo, ai_description, is_active, file_name, file_size, file_type, image_width, image_height')
     .eq('id', id)
     .single()
   return data
@@ -52,8 +60,6 @@ export default async function ImageDetailPage({ params }: Props) {
     minute: '2-digit',
   })
 
-  const pageUrl = `${process.env.NEXT_PUBLIC_APP_URL}/images/${id}`
-
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
@@ -68,29 +74,35 @@ export default async function ImageDetailPage({ params }: Props) {
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         {/* Main image */}
         <div className="relative w-full bg-gray-100 rounded-xl overflow-hidden">
-          <Image
-            src={image.r2_url}
-            alt={image.memo ?? '取材画像'}
-            width={1200}
-            height={800}
-            className="w-full h-auto object-contain"
-            unoptimized
-          />
+          {image.file_type?.startsWith('image/') ? (
+            <Image
+              src={image.r2_url}
+              alt={image.memo ?? '取材画像'}
+              width={1200}
+              height={800}
+              className="w-full h-auto object-contain"
+              unoptimized
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+              <span className="text-6xl">📄</span>
+              <span className="text-lg font-medium">{image.file_name}</span>
+              <span className="text-sm">{image.file_type}</span>
+            </div>
+          )}
         </div>
 
         {/* Actions */}
         <div className="flex gap-3 flex-wrap">
+          <CopyButton url={image.r2_url} label="画像URLをコピー" />
           <a
-            href={image.r2_url}
-            download
-            target="_blank"
-            rel="noopener noreferrer"
+            href={`/api/images/${id}/download`}
+            download={image.file_name ?? `image-${id}`}
             className="flex-1 min-w-[120px] py-3 bg-blue-600 text-white text-center rounded-lg font-medium hover:bg-blue-700 transition-colors"
           >
             ダウンロード
           </a>
-          <CopyButton url={pageUrl} label="ページURLをコピー" />
-          <CopyButton url={image.r2_url} label="画像URLをコピー" />
+          <DeleteButton id={id} />
         </div>
 
         {/* Meta */}
@@ -99,6 +111,42 @@ export default async function ImageDetailPage({ params }: Props) {
             <span className="text-xs text-gray-500 uppercase tracking-wide">アップロード日</span>
             <p className="text-sm text-gray-800 mt-0.5">{formattedDate}</p>
           </div>
+          {image.file_name && (
+            <div>
+              <span className="text-xs text-gray-500 uppercase tracking-wide">ファイル名</span>
+              <p className="text-sm text-gray-800 mt-0.5 break-all">{image.file_name}</p>
+            </div>
+          )}
+          <div>
+            <span className="text-xs text-gray-500 uppercase tracking-wide">画像URL</span>
+            <p className="text-sm text-blue-600 mt-0.5 break-all">
+              <a href={image.r2_url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                {image.r2_url}
+              </a>
+            </p>
+          </div>
+          {(image.file_type || image.file_size != null || (image.image_width && image.image_height)) && (
+            <div className="flex gap-6 flex-wrap">
+              {image.file_type && (
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">形式</span>
+                  <p className="text-sm text-gray-800 mt-0.5">{image.file_type.split('/')[1]?.toUpperCase()}</p>
+                </div>
+              )}
+              {image.file_size != null && (
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">ファイルサイズ</span>
+                  <p className="text-sm text-gray-800 mt-0.5">{formatFileSize(image.file_size)}</p>
+                </div>
+              )}
+              {image.image_width && image.image_height && (
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">解像度</span>
+                  <p className="text-sm text-gray-800 mt-0.5">{image.image_width}×{image.image_height}</p>
+                </div>
+              )}
+            </div>
+          )}
           {image.memo && (
             <div>
               <span className="text-xs text-gray-500 uppercase tracking-wide">メモ</span>
@@ -106,12 +154,7 @@ export default async function ImageDetailPage({ params }: Props) {
             </div>
           )}
           {image.ai_description && (
-            <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wide">AI解析結果</span>
-              <p className="text-sm text-gray-700 mt-0.5 whitespace-pre-wrap leading-relaxed">
-                {image.ai_description}
-              </p>
-            </div>
+            <AiDescription text={image.ai_description} />
           )}
         </div>
       </main>

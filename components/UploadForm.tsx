@@ -17,13 +17,8 @@ export default function UploadForm() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = (f: File) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    if (!allowed.includes(f.type)) {
-      setErrorMsg('JPEG・PNG・WebP・GIF のみアップロードできます')
-      return
-    }
-    if (f.size > 10 * 1024 * 1024) {
-      setErrorMsg('ファイルサイズは10MB以下にしてください')
+    if (f.size > 100 * 1024 * 1024) {
+      setErrorMsg('ファイルサイズは100MB以下にしてください')
       return
     }
     setFile(f)
@@ -82,7 +77,6 @@ export default function UploadForm() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
             className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
           />
@@ -95,19 +89,10 @@ export default function UploadForm() {
             <div className="text-gray-500">
               <p className="text-base">ここにドラッグ&ドロップ</p>
               <p className="text-sm mt-1">または クリックしてファイルを選択</p>
-              <p className="text-xs mt-2 text-gray-400">JPEG / PNG / WebP / GIF · 最大10MB</p>
+              <p className="text-xs mt-2 text-gray-400">すべてのファイル形式対応（PSD含む）· 最大100MB</p>
             </div>
           )}
         </div>
-
-        {/* Memo */}
-        <textarea
-          value={memo}
-          onChange={(e) => setMemo(e.target.value)}
-          placeholder="メモ（任意）：機種名、撮影場所など"
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-        />
 
         {errorMsg && <p className="text-red-600 text-sm">{errorMsg}</p>}
 
