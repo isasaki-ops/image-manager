@@ -1,16 +1,23 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
+import { RESIZABLE_MIME_TYPES, RESIZABLE_EXTENSIONS } from '@/lib/imageTypes'
 
 interface UploadResult {
   id: string
   r2_url: string
 }
 
+function fileCanResize(file: File): boolean {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+  return RESIZABLE_MIME_TYPES.has(file.type) || RESIZABLE_EXTENSIONS.has(ext)
+}
+
 export default function UploadForm() {
   const [isDragging, setIsDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [memo, setMemo] = useState('')
+  const [createThumbnail, setCreateThumbnail] = useState(false)
   const [progress, setProgress] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [result, setResult] = useState<UploadResult | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
@@ -23,6 +30,7 @@ export default function UploadForm() {
     }
     setFile(f)
     setErrorMsg('')
+    if (!fileCanResize(f)) setCreateThumbnail(false)
   }
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -42,6 +50,7 @@ export default function UploadForm() {
     const formData = new FormData()
     formData.append('file', file)
     if (memo) formData.append('memo', memo)
+    formData.append('create_thumbnail', String(createThumbnail))
 
     try {
       const res = await fetch('/api/upload', { method: 'POST', body: formData })
@@ -51,11 +60,14 @@ export default function UploadForm() {
       setProgress('success')
       setFile(null)
       setMemo('')
+      setCreateThumbnail(false)
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'アップロードに失敗しました')
       setProgress('error')
     }
   }
+
+  const resizable = file ? fileCanResize(file) : false
 
   return (
     <div className="max-w-lg mx-auto space-y-4">
@@ -93,6 +105,23 @@ export default function UploadForm() {
             </div>
           )}
         </div>
+
+        {/* Thumbnail checkbox */}
+        <label className={`flex items-center gap-3 select-none ${resizable ? 'cursor-pointer' : 'cursor-not-allowed opacity-40'}`}>
+          <input
+            type="checkbox"
+            checked={createThumbnail}
+            disabled={!resizable}
+            onChange={(e) => setCreateThumbnail(e.target.checked)}
+            className="w-4 h-4 accent-blue-600"
+          />
+          <span className="text-sm text-gray-700">
+            600×400で複製
+            {file && !resizable && (
+              <span className="ml-2 text-xs text-gray-400">（このファイル形式は非対応）</span>
+            )}
+          </span>
+        </label>
 
         {errorMsg && <p className="text-red-600 text-sm">{errorMsg}</p>}
 

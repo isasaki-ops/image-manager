@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import CopyButton from './CopyButton'
 import DeleteButton from './DeleteButton'
+import DuplicateButton from './DuplicateButton'
 import AiDescription from './AiDescription'
 
 interface Props {
@@ -102,6 +103,9 @@ export default async function ImageDetailPage({ params }: Props) {
           >
             ダウンロード
           </a>
+          {image.file_type?.startsWith('image/') && (
+            <DuplicateButton id={id} disabled={image.image_width === 600 && image.image_height === 400} />
+          )}
           <DeleteButton id={id} />
         </div>
 

@@ -78,7 +78,7 @@ export default function ImageCard({
   return (
     <div className="group bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       <Link href={`/images/${id}`}>
-        <div className="relative aspect-video bg-gray-100 overflow-hidden">
+        <div className="relative aspect-[3/2] bg-gray-100 overflow-hidden">
           {!file_type?.startsWith('image/') ? (
             <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-1">
               <span className="text-3xl">📄</span>

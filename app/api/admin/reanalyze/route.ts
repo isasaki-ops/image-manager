@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
 
     const { data: image, error } = await getSupabaseAdmin()
       .from('images')
-      .select('id, r2_url, memo')
+      .select('id, r2_url, memo, file_name')
       .eq('id', id)
       .single()
 
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     const aiDescription = await analyzeImageWithClaude(image.r2_url)
-    const searchText = [image.memo, aiDescription].filter(Boolean).join('\n')
+    const searchText = [image.file_name, aiDescription, image.memo].filter(Boolean).join('\n')
     const embedding = await generateEmbedding(searchText)
 
     await getSupabaseAdmin()

@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const { data: images, error } = await getSupabaseAdmin()
       .from('images')
-      .select('id, r2_url, uploaded_at, memo, ai_description, is_active')
+      .select('id, r2_url, uploaded_at, memo, ai_description, is_active, image_width, image_height')
       .order('uploaded_at', { ascending: false })
 
     if (error) throw error

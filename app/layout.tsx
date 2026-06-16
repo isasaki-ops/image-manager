@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "取材画像管理",
+  title: "IMAGE MANAGER",
   description: "パチンコ・パチスロ取材画像管理システム",
 };
 
