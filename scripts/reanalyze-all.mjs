@@ -1,153 +1,105 @@
-/**
- * 全画像を新プロンプトで再解析するスクリプト
- * - _600x400.jpg はオリジナルの解析結果をコピー（API呼び出し削減）
- * - それ以外はすべて Claude で再解析
- * Usage: node scripts/reanalyze-all.mjs
- */
+// 全画像のファイル名から読み仮名を生成してmemo・search_text・embeddingを更新する
+// 実行: node --env-file=.env.local scripts/reanalyze-all.mjs
 
-import { readFileSync } from 'fs'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const env = readFileSync(join(__dirname, '..', '.env.local'), 'utf8')
-const vars = {}
-env.split('\n').forEach(line => {
-  const [k, ...v] = line.split('=')
-  if (k && v.length) vars[k.trim()] = v.join('=').trim()
-})
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-const sb = createClient(vars.NEXT_PUBLIC_SUPABASE_URL, vars.SUPABASE_SERVICE_ROLE_KEY)
-const anthropic = new Anthropic({ apiKey: vars.ANTHROPIC_API_KEY })
-const openai = new OpenAI({ apiKey: vars.OPENAI_API_KEY })
-
-const SYSTEM_PROMPT =
-  'この画像はパチンコ・パチスロの取材で使うバナーやポスターです。\n画像内に書かれているテキスト・文字情報のみを書き起こしてください。\n\n取材名・イベント名・キャンペーン名・日付・場所名・出演者名・芸能人名・タレント名・機種名・店舗名など、画像内のすべての文字を正確に抽出してください。\n\n背景・色・キャラクターの外見・レイアウトなど視覚的な情報は一切含めないでください。\n文字が読み取れない、または文字がない画像の場合は「テキストなし」とだけ記載してください。'
-
-async function analyzeImage(r2Url) {
+async function generateReadings(fileName) {
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 512,
-    system: SYSTEM_PROMPT,
+    max_tokens: 256,
     messages: [{
       role: 'user',
-      content: [
-        { type: 'image', source: { type: 'url', url: r2Url } },
-        { type: 'text', text: 'この画像を詳細に説明してください。' },
-      ],
+      content: `以下のファイル名に含まれる語句の「ひらがな読み」を、できるだけ多くのパターンで出力してください。
+
+ルール:
+- 漢字・英語・カタカナのみ対象（すでにひらがなの部分は出力しない）
+- 熟語・固有名詞はまず全体の読みを出力する（例: きょうきのえん）
+- さらに各漢字の音読み・訓読みをそれぞれ個別にも出力する（例: くるう きょう おに き うたげ えん）
+- 英語はカタカナ読みをひらがなに変換して出力する
+- 人名は読み方が複数ある場合はすべて出力する（例: しょうくん のぼるくん）
+- すべてスペース区切りで並べる
+- 拡張子・記号・数字は無視する
+- ひらがなのみ出力する（説明文・記号は不要）
+
+ファイル名: ${fileName}`,
     }],
   })
-  return response.content[0].text
+  return response.content[0].text.trim()
 }
 
 async function generateEmbedding(text) {
-  const res = await openai.embeddings.create({ model: 'text-embedding-3-small', input: text })
-  return res.data[0].embedding
-}
-
-async function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms))
+  const response = await openai.embeddings.create({
+    model: 'text-embedding-3-small',
+    input: text,
+  })
+  return response.data[0].embedding
 }
 
 async function main() {
-  const { data: images, error } = await sb
+  const { data: images, error } = await supabase
     .from('images')
-    .select('id, r2_url, file_name, file_type, memo')
+    .select('id, file_name, memo')
+    .eq('is_active', true)
     .order('uploaded_at', { ascending: true })
 
-  if (error) { console.error('Fetch failed:', error); process.exit(1) }
+  if (error) throw error
 
-  // 画像ファイルのみ対象（PSDなど非画像は除外）
-  const allImages = images.filter(img =>
-    img.file_type?.startsWith('image/') || img.r2_url?.match(/\.(png|jpg|jpeg|webp|gif)$/i)
-  )
+  console.log(`${images.length}件を処理します\n`)
 
-  // オリジナルと600x400複製を分離
-  const duplicates = allImages.filter(img => img.file_name?.endsWith('_600x400.jpg'))
-  const originals = allImages.filter(img => !img.file_name?.endsWith('_600x400.jpg'))
+  let success = 0
+  let failed = 0
+  const failures = []
 
-  // オリジナルのbaseName → ai_description マップ（複製更新用）
-  const resultMap = new Map() // baseName → { ai_description, embedding }
-
-  console.log(`総件数: ${allImages.length} 件`)
-  console.log(`  オリジナル: ${originals.length} 件（Claude再解析）`)
-  console.log(`  600×400複製: ${duplicates.length} 件（コピー）\n`)
-
-  let success = 0, fail = 0
-
-  // ── オリジナルを再解析 ──
-  for (let i = 0; i < originals.length; i++) {
-    const img = originals[i]
-    const label = img.file_name || img.id
-    process.stdout.write(`[${i + 1}/${originals.length}] ${label} ... `)
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i]
+    const label = img.file_name ?? img.id
+    process.stdout.write(`[${i + 1}/${images.length}] ${label} ... `)
 
     try {
-      const aiDescription = await analyzeImage(img.r2_url)
-      const searchText = [img.file_name, aiDescription, img.memo].filter(Boolean).join('\n')
+      const readings = await generateReadings(img.file_name ?? '')
+      const combinedMemo = [img.memo, readings].filter(Boolean).join(' ') || null
+      const searchText = [img.file_name, combinedMemo].filter(Boolean).join('\n')
       const embedding = await generateEmbedding(searchText)
 
-      await sb.from('images').update({ ai_description: aiDescription, search_text: searchText, embedding }).eq('id', img.id)
+      const { error: updateError } = await supabase
+        .from('images')
+        .update({ memo: combinedMemo, search_text: searchText, embedding })
+        .eq('id', img.id)
 
-      // baseName を保存（複製マッチ用）
-      const baseName = img.file_name?.replace(/\.[^.]+$/, '') ?? ''
-      if (baseName) resultMap.set(baseName, { aiDescription, embedding: null })
+      if (updateError) throw updateError
 
-      process.stdout.write(`✓\n`)
+      console.log(`OK [${readings}]`)
       success++
     } catch (err) {
-      process.stdout.write(`✗ ${err.message}\n`)
-      fail++
+      console.log(`FAILED: ${err.message}`)
+      failed++
+      failures.push({ id: img.id, file_name: label, error: err.message })
     }
 
-    // rate limit 対策：3件ごとに少し待機
-    if ((i + 1) % 3 === 0) await sleep(500)
+    if (i < images.length - 1) {
+      await new Promise((r) => setTimeout(r, 500))
+    }
   }
 
-  console.log(`\nオリジナル完了: 成功 ${success} / 失敗 ${fail}`)
-  console.log(`\n── 600×400複製を更新中 ──\n`)
-
-  let copySuccess = 0, copyFail = 0
-
-  for (let i = 0; i < duplicates.length; i++) {
-    const img = duplicates[i]
-    // "CUBEくん_600x400.jpg" → "CUBEくん"
-    const baseName = img.file_name?.replace(/_600x400\.jpg$/, '') ?? ''
-    process.stdout.write(`[${i + 1}/${duplicates.length}] ${img.file_name} ... `)
-
-    // オリジナルをDBから取得（resultMapにないケース対応）
-    const { data: orig } = await sb
-      .from('images')
-      .select('ai_description, memo')
-      .eq('file_name', `${baseName}.png`)
-      .maybeSingle()
-
-    const aiDescription = orig?.ai_description ?? null
-    if (!aiDescription) {
-      process.stdout.write(`スキップ（元画像なし）\n`)
-      copyFail++
-      continue
+  console.log(`\n完了: 成功 ${success}件 / 失敗 ${failed}件`)
+  if (failures.length > 0) {
+    console.log('\n失敗一覧:')
+    for (const f of failures) {
+      console.log(`  ${f.file_name}: ${f.error}`)
     }
-
-    try {
-      const searchText = [img.file_name, aiDescription, img.memo].filter(Boolean).join('\n')
-      const embedding = await generateEmbedding(searchText)
-      await sb.from('images').update({ ai_description: aiDescription, search_text: searchText, embedding }).eq('id', img.id)
-      process.stdout.write(`✓\n`)
-      copySuccess++
-    } catch (err) {
-      process.stdout.write(`✗ ${err.message}\n`)
-      copyFail++
-    }
-
-    if ((i + 1) % 5 === 0) await sleep(300)
   }
-
-  console.log(`\n===== 完了 =====`)
-  console.log(`オリジナル再解析: 成功 ${success} / 失敗 ${fail}`)
-  console.log(`600×400コピー:   成功 ${copySuccess} / 失敗 ${copyFail}`)
 }
 
-main().catch(console.error)
+main().catch((err) => {
+  console.error('Fatal error:', err)
+  process.exit(1)
+})

@@ -15,8 +15,6 @@ interface ImageCardProps {
   file_type?: string | null
   image_width?: number | null
   image_height?: number | null
-  searchQuery?: string
-  showFeedback?: boolean
 }
 
 function formatFileSize(bytes: number): string {
@@ -35,11 +33,8 @@ export default function ImageCard({
   file_type,
   image_width,
   image_height,
-  searchQuery,
-  showFeedback = false,
 }: ImageCardProps) {
   const [imgError, setImgError] = useState(false)
-  const [feedbackState, setFeedbackState] = useState<'relevant' | 'irrelevant' | null>(null)
   const [copyDone, setCopyDone] = useState(false)
 
   const formattedDate = new Date(uploaded_at).toLocaleDateString('ja-JP', {
@@ -59,20 +54,6 @@ export default function ImageCard({
     a.href = `/api/images/${id}/download`
     a.download = file_name ?? `image-${id}`
     a.click()
-  }
-
-  const handleFeedback = async (type: 'relevant' | 'irrelevant') => {
-    if (!searchQuery) return
-    setFeedbackState(type)
-    try {
-      await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_id: id, query_text: searchQuery, feedback: type }),
-      })
-    } catch {
-      // silently fail — UI already updated
-    }
   }
 
   return (
@@ -115,10 +96,6 @@ export default function ImageCard({
             {image_width && image_height && `${image_width}×${image_height}`}
           </p>
         )}
-        {memo && (
-          <p className="text-sm font-medium text-gray-800 line-clamp-2">{memo.slice(0, 50)}</p>
-        )}
-
         <div className="flex gap-1.5 flex-wrap">
           <button
             onClick={handleCopy}
@@ -134,33 +111,6 @@ export default function ImageCard({
           </button>
         </div>
 
-        {showFeedback && searchQuery && (
-          <div className="space-y-1.5 pt-1 border-t border-gray-100">
-            <p className="text-xs font-medium text-gray-500">フィードバックをお願いします</p>
-            <div className="flex gap-1.5">
-              <button
-                onClick={() => handleFeedback('relevant')}
-                className={`flex-1 px-2 py-1.5 text-xs font-medium rounded border transition-colors ${
-                  feedbackState === 'relevant'
-                    ? 'bg-green-500 border-green-500 text-white'
-                    : 'bg-white border-green-400 text-green-700 hover:bg-green-50'
-                }`}
-              >
-                ✓ 正解
-              </button>
-              <button
-                onClick={() => handleFeedback('irrelevant')}
-                className={`flex-1 px-2 py-1.5 text-xs font-medium rounded border transition-colors ${
-                  feedbackState === 'irrelevant'
-                    ? 'bg-red-500 border-red-500 text-white'
-                    : 'bg-white border-red-400 text-red-700 hover:bg-red-50'
-                }`}
-              >
-                ✗ 不正解
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

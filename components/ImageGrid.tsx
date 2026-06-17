@@ -16,10 +16,9 @@ interface ImageItem {
 interface ImageGridProps {
   images: ImageItem[]
   searchQuery?: string
-  showFeedback?: boolean
 }
 
-export default function ImageGrid({ images, searchQuery, showFeedback }: ImageGridProps) {
+export default function ImageGrid({ images, searchQuery }: ImageGridProps) {
   if (images.length === 0) {
     return (
       <div className="text-center py-20 text-gray-400">
@@ -38,7 +37,6 @@ export default function ImageGrid({ images, searchQuery, showFeedback }: ImageGr
           key={img.id}
           {...img}
           searchQuery={searchQuery}
-          showFeedback={showFeedback}
         />
       ))}
     </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
-import { analyzeImageWithClaude, generateEmbedding } from '@/lib/ai'
+import { generateEmbedding } from '@/lib/ai'
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
 
     const { data: image, error } = await getSupabaseAdmin()
       .from('images')
-      .select('id, r2_url, memo, file_name')
+      .select('id, file_name, memo')
       .eq('id', id)
       .single()
 
@@ -17,16 +17,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Image not found' }, { status: 404 })
     }
 
-    const aiDescription = await analyzeImageWithClaude(image.r2_url)
-    const searchText = [image.file_name, aiDescription, image.memo].filter(Boolean).join('\n')
+    const searchText = [image.file_name, image.memo].filter(Boolean).join('\n')
     const embedding = await generateEmbedding(searchText)
 
     await getSupabaseAdmin()
       .from('images')
-      .update({ ai_description: aiDescription, search_text: searchText, embedding })
+      .update({ search_text: searchText, embedding })
       .eq('id', id)
 
-    return NextResponse.json({ success: true, ai_description: aiDescription })
+    return NextResponse.json({ success: true })
   } catch (err) {
     console.error('[reanalyze] error:', err)
     return NextResponse.json({ error: 'Reanalysis failed' }, { status: 500 })

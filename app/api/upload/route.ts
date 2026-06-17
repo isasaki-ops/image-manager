@@ -4,7 +4,7 @@ export const maxDuration = 300
 import sizeOf from 'image-size'
 import { uploadToR2 } from '@/lib/r2'
 import { getSupabaseAdmin } from '@/lib/supabase'
-import { analyzeImageWithClaude, generateEmbedding } from '@/lib/ai'
+import { generateEmbedding, generateReadingsFromFileName } from '@/lib/ai'
 import { canResize, cropTo600x400 } from '@/lib/imageResize'
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/tiff', 'image/bmp']
@@ -109,9 +109,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (isImage) {
-      analyzeInBackground(image.id, r2Url, originalName, memo, thumbnailId)
-    }
+    const baseName = originalName.replace(/\.[^.]+$/, '')
+    const thumbnailFileName = thumbnailId ? `${baseName}_600x400.jpg` : undefined
+    embedInBackground(image.id, originalName, memo, thumbnailId, thumbnailFileName)
 
     return NextResponse.json({ id: image.id, r2_url: image.r2_url })
   } catch (err) {
@@ -120,22 +120,35 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function analyzeInBackground(imageId: string, r2Url: string, fileName: string, memo: string | null, thumbnailId?: string) {
+function embedInBackground(
+  imageId: string,
+  fileName: string,
+  memo: string | null,
+  thumbnailId?: string,
+  thumbnailFileName?: string,
+) {
   setImmediate(async () => {
     try {
-      const aiDescription = await analyzeImageWithClaude(r2Url)
-      const searchText = [fileName, aiDescription, memo].filter(Boolean).join('\n')
-      const embedding = await generateEmbedding(searchText)
+      const readings = await generateReadingsFromFileName(fileName)
+      const combinedMemo = [memo, readings].filter(Boolean).join(' ') || null
 
-      const ids = [imageId, thumbnailId].filter(Boolean) as string[]
-      for (const id of ids) {
+      const origSearchText = [fileName, combinedMemo].filter(Boolean).join('\n')
+      const origEmbedding = await generateEmbedding(origSearchText)
+      await getSupabaseAdmin()
+        .from('images')
+        .update({ memo: combinedMemo, search_text: origSearchText, embedding: origEmbedding })
+        .eq('id', imageId)
+
+      if (thumbnailId && thumbnailFileName) {
+        const thumbSearchText = [thumbnailFileName, combinedMemo].filter(Boolean).join('\n')
+        const thumbEmbedding = await generateEmbedding(thumbSearchText)
         await getSupabaseAdmin()
           .from('images')
-          .update({ ai_description: aiDescription, search_text: searchText, embedding })
-          .eq('id', id)
+          .update({ memo: combinedMemo, search_text: thumbSearchText, embedding: thumbEmbedding })
+          .eq('id', thumbnailId)
       }
     } catch (err) {
-      console.error(`[upload] AI analysis failed for ${imageId}:`, err)
+      console.error(`[upload] embedding failed for ${imageId}:`, err)
     }
   })
 }

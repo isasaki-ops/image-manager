@@ -35,22 +35,42 @@ export async function PATCH(
 
     const { data: img } = await getSupabaseAdmin()
       .from('images')
-      .select('ai_description, file_name')
+      .select('file_name')
       .eq('id', id)
       .single()
 
-    const textParts = [img?.file_name, img?.ai_description, memo].filter(Boolean)
-    const update: Record<string, unknown> = { memo }
-    if (textParts.length > 0) {
-      update.embedding = await generateEmbedding(textParts.join('\n'))
+    if (!img) return NextResponse.json({ error: 'Image not found' }, { status: 404 })
+
+    const fileName = img.file_name ?? ''
+    const searchText = [fileName, memo].filter(Boolean).join('\n')
+    const embedding = searchText ? await generateEmbedding(searchText) : null
+
+    const update: Record<string, unknown> = { memo, search_text: searchText }
+    if (embedding) update.embedding = embedding
+
+    await getSupabaseAdmin().from('images').update(update).eq('id', id)
+
+    // 元画像↔複製を双方向に同期
+    const isThumb = fileName.includes('_600x400')
+    const pairName = isThumb
+      ? fileName.replace('_600x400', '')
+      : (() => { const ext = fileName.includes('.') ? '.' + fileName.split('.').pop() : ''; return fileName.replace(ext, '') + '_600x400.jpg' })()
+
+    const { data: pair } = await getSupabaseAdmin()
+      .from('images')
+      .select('id, file_name')
+      .eq('file_name', pairName)
+      .eq('is_active', true)
+      .single()
+
+    if (pair) {
+      const pairSearchText = [pair.file_name, memo].filter(Boolean).join('\n')
+      const pairEmbedding = pairSearchText ? await generateEmbedding(pairSearchText) : null
+      const pairUpdate: Record<string, unknown> = { memo, search_text: pairSearchText }
+      if (pairEmbedding) pairUpdate.embedding = pairEmbedding
+      await getSupabaseAdmin().from('images').update(pairUpdate).eq('id', pair.id)
     }
 
-    const { error } = await getSupabaseAdmin()
-      .from('images')
-      .update(update)
-      .eq('id', id)
-
-    if (error) return NextResponse.json({ error: 'Update failed' }, { status: 500 })
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error('[images/id PATCH] error:', err)

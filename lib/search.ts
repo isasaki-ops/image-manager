@@ -44,16 +44,37 @@ async function vectorSearch(query: string, limit: number): Promise<SearchResult[
   }
 }
 
+function toHiragana(str: string): string {
+  return str.replace(/[ァ-ヶ]/g, (ch) =>
+    String.fromCharCode(ch.charCodeAt(0) - 0x60)
+  )
+}
+
+function toKatakana(str: string): string {
+  return str.replace(/[ぁ-ゖ]/g, (ch) =>
+    String.fromCharCode(ch.charCodeAt(0) + 0x60)
+  )
+}
+
 async function textSearch(query: string, limit: number): Promise<SearchResult[]> {
-  // ILIKE特殊文字をエスケープ
-  const escaped = query.replace(/[%_\\]/g, '\\$&')
-  const pattern = `%${escaped}%`
+  const escape = (s: string) => s.replace(/[%_\\]/g, '\\$&')
+
+  const patterns = Array.from(new Set([
+    query,
+    toHiragana(query),
+    toKatakana(query),
+  ])).map((s) => `%${escape(s)}%`)
+
+  const cols = ['file_name', 'memo']
+  const orClause = patterns
+    .flatMap((p) => cols.map((col) => `${col}.ilike.${p}`))
+    .join(',')
 
   const { data } = await getSupabaseAdmin()
     .from('images')
     .select('id, r2_url, uploaded_at, memo, ai_description, file_name, file_size, file_type, image_width, image_height')
     .eq('is_active', true)
-    .or(`file_name.ilike.${pattern},ai_description.ilike.${pattern},memo.ilike.${pattern}`)
+    .or(orClause)
     .order('uploaded_at', { ascending: false })
     .limit(limit)
 
