@@ -13,7 +13,7 @@ export async function POST(
 
     const { data: image, error } = await getSupabaseAdmin()
       .from('images')
-      .select('r2_url, memo, ai_description, file_name')
+      .select('r2_url, memo, ai_description, file_name, event_id')
       .eq('id', id)
       .single()
 
@@ -53,6 +53,8 @@ export async function POST(
       file_type: 'image/jpeg',
       image_width: 600,
       image_height: 400,
+      image_type: '600x400',
+      event_id: image.event_id ?? null,
       ai_description,
     }
     if (embedding) {

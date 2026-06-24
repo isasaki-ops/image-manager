@@ -1,51 +1,40 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import SearchBox from '@/components/SearchBox'
-import ImageGrid from '@/components/ImageGrid'
+import EventGrid from '@/components/EventGrid'
+import type { EventWithStats } from '@/lib/supabase'
 
-interface ImageItem {
-  id: string
-  r2_url: string
-  uploaded_at: string
-  memo: string | null
-  ai_description: string | null
-  file_name: string | null
-  file_size: number | null
-  file_type: string | null
-  image_width: number | null
-  image_height: number | null
-}
+const PAGE_SIZE = 40
 
 export default function HomePage() {
-  const [images, setImages] = useState<ImageItem[]>([])
+  const [events, setEvents] = useState<EventWithStats[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchMode, setIsSearchMode] = useState(false)
-  const [filter600x400, setFilter600x400] = useState(false)
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const loadingMoreRef = useRef(false)
 
-  const fetchImages = useCallback(async (query: string) => {
+  const fetchEvents = useCallback(async (query: string) => {
     setIsLoading(true)
     try {
       const url = query
-        ? `/api/search?q=${encodeURIComponent(query)}`
-        : '/api/search?offset=0'
+        ? `/api/events?q=${encodeURIComponent(query)}`
+        : '/api/events?offset=0'
       const res = await fetch(url)
       const data = await res.json()
-      const imgs: ImageItem[] = data.images ?? []
-      setImages(imgs)
+      const evts: EventWithStats[] = data.events ?? []
+      setEvents(evts)
       setSearchQuery(query)
       setIsSearchMode(!!query)
       setHasMore(!query && (data.hasMore ?? false))
-      setOffset(query ? 0 : 40)
+      setOffset(query ? 0 : PAGE_SIZE)
     } catch {
-      setImages([])
+      setEvents([])
     } finally {
       setIsLoading(false)
     }
@@ -56,21 +45,19 @@ export default function HomePage() {
     loadingMoreRef.current = true
     setIsLoadingMore(true)
     try {
-      const res = await fetch(`/api/search?offset=${offset}`)
+      const res = await fetch(`/api/events?offset=${offset}`)
       const data = await res.json()
-      const imgs: ImageItem[] = data.images ?? []
-      setImages((prev) => [...prev, ...imgs])
+      const evts: EventWithStats[] = data.events ?? []
+      setEvents((prev) => [...prev, ...evts])
       setHasMore(data.hasMore ?? false)
-      setOffset((prev) => prev + 40)
-    } catch {
-      // ignore
-    } finally {
+      setOffset((prev) => prev + PAGE_SIZE)
+    } catch { /* ignore */ } finally {
       loadingMoreRef.current = false
       setIsLoadingMore(false)
     }
   }, [hasMore, offset])
 
-  useEffect(() => { fetchImages('') }, [fetchImages])
+  useEffect(() => { fetchEvents('') }, [fetchEvents])
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -83,54 +70,36 @@ export default function HomePage() {
     return () => observer.disconnect()
   }, [loadMore])
 
-  const displayImages = useMemo(() =>
-    filter600x400
-      ? images.filter((img) => img.image_width === 600 && img.image_height === 400)
-      : images,
-    [images, filter600x400]
-  )
-
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
           <div className="whitespace-nowrap">
-            <h1 className="text-lg font-bold text-gray-800 leading-tight">IMAGE MANAGER</h1>
-            <p className="text-xs text-gray-400">パチンコ・パチスロ取材画像管理</p>
+            <h1 className="text-lg font-bold text-gray-800 leading-tight">EVENT MANAGER</h1>
+            <p className="text-xs text-gray-400">パチンコ・パチスロ取材イベント管理</p>
           </div>
           <div className="flex-1">
-            <SearchBox onSearch={fetchImages} isLoading={isLoading} />
+            <SearchBox onSearch={fetchEvents} isLoading={isLoading} />
           </div>
           <Link
-            href="/upload"
+            href="/events/new"
             className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors whitespace-nowrap"
           >
-            + アップロード
+            + イベント登録
           </Link>
           <Link
-            href="/admin"
-            className="px-3 py-2 text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap"
+            href="/upload"
+            className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors whitespace-nowrap"
           >
-            検索登録
+            画像アップ
           </Link>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 pb-2">
-          <label className="flex items-center gap-2 cursor-pointer w-fit">
-            <input
-              type="checkbox"
-              checked={filter600x400}
-              onChange={(e) => setFilter600x400(e.target.checked)}
-              className="w-4 h-4 accent-blue-600"
-            />
-            <span className="text-sm text-gray-600">600×400のみ表示</span>
-          </label>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         {isSearchMode && !isLoading && (
           <p className="text-sm text-gray-500 mb-4">
-            「{searchQuery}」の検索結果 — {displayImages.length} 件
+            「{searchQuery}」の検索結果 — {events.length} 件
           </p>
         )}
         {isLoading ? (
@@ -139,18 +108,15 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <ImageGrid
-              images={displayImages}
-              searchQuery={isSearchMode ? searchQuery : undefined}
-            />
+            <EventGrid events={events} />
             <div ref={sentinelRef} className="h-1 mt-4" />
             {isLoadingMore && (
               <div className="flex justify-center py-6">
                 <div className="w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
               </div>
             )}
-            {!isSearchMode && !hasMore && images.length > 0 && (
-              <p className="text-center text-sm text-gray-400 py-6">全 {images.length} 件</p>
+            {!isSearchMode && !hasMore && events.length > 0 && (
+              <p className="text-center text-sm text-gray-400 py-6">全 {events.length} 件</p>
             )}
           </>
         )}

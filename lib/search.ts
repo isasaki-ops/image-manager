@@ -1,4 +1,4 @@
-import { getSupabaseAdmin, type SearchResult } from './supabase'
+import { getSupabaseAdmin, type SearchResult, type Event } from './supabase'
 import { generateEmbedding } from './ai'
 
 export async function searchImages(
@@ -6,11 +6,10 @@ export async function searchImages(
   limit: number = 20
 ): Promise<SearchResult[]> {
   const [vectorResults, textResults] = await Promise.all([
-    vectorSearch(query, limit),
-    textSearch(query, limit),
+    vectorSearchImages(query, limit),
+    textSearchImages(query, limit),
   ])
 
-  // テキスト一致を先頭に、ベクトル一致で補完（重複除去）
   const seen = new Set<string>()
   const merged: SearchResult[] = []
 
@@ -30,7 +29,35 @@ export async function searchImages(
   return merged.slice(0, limit)
 }
 
-async function vectorSearch(query: string, limit: number): Promise<SearchResult[]> {
+export async function searchEvents(
+  query: string,
+  limit: number = 20
+): Promise<Event[]> {
+  const [vectorResults, textResults] = await Promise.all([
+    vectorSearchEvents(query, limit),
+    textSearchEvents(query, limit),
+  ])
+
+  const seen = new Set<string>()
+  const merged: Event[] = []
+
+  for (const item of textResults) {
+    if (!seen.has(item.id)) {
+      seen.add(item.id)
+      merged.push(item)
+    }
+  }
+  for (const item of vectorResults) {
+    if (!seen.has(item.id)) {
+      seen.add(item.id)
+      merged.push(item)
+    }
+  }
+
+  return merged.slice(0, limit)
+}
+
+async function vectorSearchImages(query: string, limit: number): Promise<SearchResult[]> {
   try {
     const queryVector = await generateEmbedding(query)
     const { data, error } = await getSupabaseAdmin().rpc('search_images', {
@@ -39,6 +66,20 @@ async function vectorSearch(query: string, limit: number): Promise<SearchResult[
     })
     if (error) return []
     return (data as SearchResult[]) ?? []
+  } catch {
+    return []
+  }
+}
+
+async function vectorSearchEvents(query: string, limit: number): Promise<Event[]> {
+  try {
+    const queryVector = await generateEmbedding(query)
+    const { data, error } = await getSupabaseAdmin().rpc('search_events', {
+      query_vector: queryVector,
+      match_limit: limit,
+    })
+    if (error) return []
+    return (data as Event[]) ?? []
   } catch {
     return []
   }
@@ -56,15 +97,13 @@ function toKatakana(str: string): string {
   )
 }
 
-async function textSearch(query: string, limit: number): Promise<SearchResult[]> {
+function buildPatterns(query: string): string[] {
+  return Array.from(new Set([query, toHiragana(query), toKatakana(query)]))
+}
+
+async function textSearchImages(query: string, limit: number): Promise<SearchResult[]> {
   const escape = (s: string) => s.replace(/[%_\\]/g, '\\$&')
-
-  const patterns = Array.from(new Set([
-    query,
-    toHiragana(query),
-    toKatakana(query),
-  ])).map((s) => `%${escape(s)}%`)
-
+  const patterns = buildPatterns(query).map((s) => `%${escape(s)}%`)
   const cols = ['file_name', 'memo']
   const orClause = patterns
     .flatMap((p) => cols.map((col) => `${col}.ilike.${p}`))
@@ -84,4 +123,22 @@ async function textSearch(query: string, limit: number): Promise<SearchResult[]>
     feedback_score: 0,
     final_score: 1,
   }))
+}
+
+async function textSearchEvents(query: string, limit: number): Promise<Event[]> {
+  const escape = (s: string) => s.replace(/[%_\\]/g, '\\$&')
+  const patterns = buildPatterns(query).map((s) => `%${escape(s)}%`)
+  const cols = ['name', 'keywords', 'memo']
+  const orClause = patterns
+    .flatMap((p) => cols.map((col) => `${col}.ilike.${p}`))
+    .join(',')
+
+  const { data } = await getSupabaseAdmin()
+    .from('events')
+    .select('id, event_code, category_id, name, keywords, memo, search_text, created_at, updated_at')
+    .or(orClause)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  return (data as Event[]) ?? []
 }

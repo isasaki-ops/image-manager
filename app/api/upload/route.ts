@@ -9,7 +9,7 @@ import { canResize, cropTo600x400 } from '@/lib/imageResize'
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/tiff', 'image/bmp']
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'tiff', 'tif', 'bmp']
-const MAX_SIZE_BYTES = 100 * 1024 * 1024 // 100MB
+const MAX_SIZE_BYTES = 100 * 1024 * 1024
 
 function resolveFileType(mimeType: string, ext: string): string {
   if (mimeType) return mimeType
@@ -22,7 +22,7 @@ function resolveFileType(mimeType: string, ext: string): string {
   return map[extLower] ?? ''
 }
 
-function generateKey(suffix = ''): { datePart: string; timePart: string; rand: string } {
+function generateKey(): { datePart: string; timePart: string; rand: string } {
   const now = new Date()
   return {
     datePart: now.toISOString().slice(0, 10).replace(/-/g, ''),
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
     const file = formData.get('file') as File | null
     const memo = (formData.get('memo') as string | null) ?? null
     const createThumbnail = formData.get('create_thumbnail') === 'true'
+    const eventId = (formData.get('event_id') as string | null) || null
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -61,16 +62,25 @@ export async function POST(req: NextRequest) {
         const dimensions = sizeOf(buffer)
         image_width = dimensions.width ?? null
         image_height = dimensions.height ?? null
-      } catch {
-        // ignore
-      }
+      } catch { /* ignore */ }
     }
 
     const r2Url = await uploadToR2(buffer, key, resolvedType || 'application/octet-stream')
 
     const { data: image, error: insertError } = await getSupabaseAdmin()
       .from('images')
-      .insert({ r2_key: key, r2_url: r2Url, memo, file_name: originalName, file_size: file.size, file_type: resolvedType || null, image_width, image_height })
+      .insert({
+        r2_key: key,
+        r2_url: r2Url,
+        memo,
+        file_name: originalName,
+        file_size: file.size,
+        file_type: resolvedType || null,
+        image_width,
+        image_height,
+        event_id: eventId,
+        image_type: 'original',
+      })
       .select('id, r2_url')
       .single()
 
@@ -78,7 +88,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to save image record' }, { status: 500 })
     }
 
-    // Create 600×400 thumbnail if requested and format supports it
     let thumbnailId: string | undefined
     if (isImage && createThumbnail && canResize(resolvedType, extFromName)) {
       try {
@@ -99,6 +108,8 @@ export async function POST(req: NextRequest) {
             file_type: 'image/jpeg',
             image_width: 600,
             image_height: 400,
+            event_id: eventId,
+            image_type: '600x400',
           })
           .select('id')
           .single()

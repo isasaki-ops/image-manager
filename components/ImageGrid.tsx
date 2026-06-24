@@ -36,7 +36,6 @@ export default function ImageGrid({ images, searchQuery }: ImageGridProps) {
         <ImageCard
           key={img.id}
           {...img}
-          searchQuery={searchQuery}
         />
       ))}
     </div>

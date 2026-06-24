@@ -79,6 +79,41 @@ export async function generateReadingsFromFileName(fileName: string): Promise<st
   return content.text.trim()
 }
 
+export async function generateKeywordsFromEventName(eventName: string): Promise<string> {
+  const response = await getAnthropic().messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 256,
+    messages: [{
+      role: 'user',
+      content: `以下のイベント名に含まれる語句の「ひらがな読み」を出力してください。
+
+ルール:
+- 漢字・英語・カタカナのみ対象。すでにひらがなの部分は出力しない
+- ひらがなのみのイベント名の場合は何も出力しない（完全に空欄）
+- 英語の単語はひらがな読みを1つだけ出力する（例: SS→えすえす、CUBE→きゅーぶ）
+- 漢字・カタカナの熟語・固有名詞は全体の読みを出力し、さらに各語の読みも出力する
+- 人名は複数の読み方をすべて出力する（例: 梅屋シン→うめやしん うめや しん）
+- 2文字以上のまとまった語のみ出力する
+- すべてスペース区切りで並べる
+- 記号・数字・句読点は無視する
+- ひらがなのみ出力する（説明文不要）
+
+例）
+イベント名: 天下無双 → てんかむそう てんか むそう
+イベント名: SS・蓮くん取材 → えすえす れんくん しゅざい
+イベント名: バズーカ → ばずーか
+イベント名: 梅屋シン来店 → うめやしんらいてん うめや しん らいてん
+イベント名: ぱちレポ〜トレンドリサーチ〜 → （空欄）
+
+イベント名: ${eventName}`,
+    }],
+  })
+
+  const content = response.content[0]
+  if (content.type !== 'text') return ''
+  return content.text.trim()
+}
+
 export async function generateEmbedding(text: string): Promise<number[]> {
   const attempt = async () => {
     const response = await getOpenAI().embeddings.create({

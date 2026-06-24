@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import UploadForm from '@/components/UploadForm'
 
@@ -14,7 +15,9 @@ export default function UploadPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-10">
-        <UploadForm />
+        <Suspense fallback={<div className="text-center text-gray-400 py-10">読み込み中...</div>}>
+          <UploadForm />
+        </Suspense>
       </main>
     </div>
   )

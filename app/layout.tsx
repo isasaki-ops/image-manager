@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IMAGE MANAGER",
-  description: "パチンコ・パチスロ取材画像管理システム",
+  title: "EVENT MANAGER",
+  description: "パチンコ・パチスロ取材イベント管理システム",
 };
 
 export default function RootLayout({
