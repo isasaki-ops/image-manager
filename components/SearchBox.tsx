@@ -5,10 +5,11 @@ import { useState, useCallback } from 'react'
 interface SearchBoxProps {
   onSearch: (query: string) => void
   isLoading: boolean
+  initialValue?: string
 }
 
-export default function SearchBox({ onSearch, isLoading }: SearchBoxProps) {
-  const [value, setValue] = useState('')
+export default function SearchBox({ onSearch, isLoading, initialValue = '' }: SearchBoxProps) {
+  const [value, setValue] = useState(initialValue)
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {

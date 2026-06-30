@@ -11,19 +11,24 @@ export async function GET(req: NextRequest) {
     const query = searchParams.get('q')?.trim()
     const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10))
     const limit = Math.min(100, parseInt(searchParams.get('limit') ?? String(PAGE_SIZE), 10))
+    const threshold = parseFloat(searchParams.get('threshold') ?? '0.55')
+    const categoryId = searchParams.get('category') || undefined
 
     let events
     let hasMore = false
 
     if (query) {
-      events = await searchEvents(query, 100)
+      events = await searchEvents(query, 100, { threshold, categoryId })
     } else {
-      const { data } = await getSupabaseAdmin()
+      let q = getSupabaseAdmin()
         .from('events')
         .select('id, event_code, category_id, name, keywords, memo, search_text, created_at, updated_at')
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
 
+      if (categoryId) q = q.eq('category_id', categoryId)
+
+      const { data } = await q
       events = data ?? []
       hasMore = events.length === limit
     }

@@ -31,7 +31,49 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const { memo } = await req.json()
+    const body = await req.json()
+
+    // event_id update (link / unlink)
+    if ('event_id' in body) {
+      const event_id: string | null = body.event_id
+
+      const { data: img } = await getSupabaseAdmin()
+        .from('images')
+        .select('file_name')
+        .eq('id', id)
+        .single()
+
+      if (!img) return NextResponse.json({ error: 'Image not found' }, { status: 404 })
+
+      await getSupabaseAdmin().from('images').update({ event_id }).eq('id', id)
+
+      // Sync event_id to paired image (original↔600×400) if pair is also unlinked
+      const fileName = img.file_name ?? ''
+      const isThumb = fileName.includes('_600x400')
+      const pairName = isThumb
+        ? fileName.replace('_600x400', '')
+        : (() => {
+            const ext = fileName.includes('.') ? '.' + fileName.split('.').pop() : ''
+            return fileName.replace(ext, '') + '_600x400.jpg'
+          })()
+
+      if (pairName) {
+        const { data: pair } = await getSupabaseAdmin()
+          .from('images')
+          .select('id')
+          .eq('file_name', pairName)
+          .is('event_id', null)
+          .maybeSingle()
+
+        if (pair) {
+          await getSupabaseAdmin().from('images').update({ event_id }).eq('id', pair.id)
+        }
+      }
+
+      return NextResponse.json({ success: true })
+    }
+
+    const { memo } = body
 
     const { data: img } = await getSupabaseAdmin()
       .from('images')

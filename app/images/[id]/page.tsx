@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import BackButton from '@/components/BackButton'
 import CopyButton from './CopyButton'
 import DeleteButton from './DeleteButton'
 import DuplicateButton from './DuplicateButton'
@@ -65,9 +66,7 @@ export default async function ImageDetailPage({ params }: Props) {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link href="/" className="text-gray-500 hover:text-gray-700 text-sm">
-            ← 一覧に戻る
-          </Link>
+          <BackButton />
           <h1 className="text-lg font-bold text-gray-800">画像詳細</h1>
         </div>
       </header>

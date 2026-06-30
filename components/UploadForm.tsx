@@ -78,11 +78,16 @@ export default function UploadForm() {
   }, [])
 
   useEffect(() => {
-    if (!showDropdown) return
+    if (!eventSearch.trim()) {
+      setShowDropdown(false)
+      setEventOptions([])
+      return
+    }
+    setShowDropdown(true)
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     searchDebounceRef.current = setTimeout(() => searchEventOptions(eventSearch), 250)
     return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current) }
-  }, [eventSearch, showDropdown, searchEventOptions])
+  }, [eventSearch, searchEventOptions])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -154,13 +159,11 @@ export default function UploadForm() {
             <>
               <div
                 className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-2 cursor-text bg-white"
-                onClick={() => { setShowDropdown(true); searchEventOptions(eventSearch) }}
               >
                 <input
                   type="text"
                   value={eventSearch}
                   onChange={(e) => setEventSearch(e.target.value)}
-                  onFocus={() => { setShowDropdown(true); searchEventOptions(eventSearch) }}
                   placeholder="イベントを検索（空欄でイベント未設定）"
                   className="flex-1 text-sm outline-none bg-transparent"
                 />
@@ -266,10 +269,7 @@ export default function UploadForm() {
         <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
           <p className="text-green-800 font-medium text-sm">アップロード完了！</p>
           <p className="text-xs text-green-600 mt-1 break-all">{result.r2_url}</p>
-          <p className="text-xs text-gray-500 mt-2">
-            ※ AIキーワード生成は数秒〜数十秒後に完了します
-          </p>
-        </div>
+            </div>
       )}
     </div>
   )

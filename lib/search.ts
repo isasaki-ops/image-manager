@@ -31,11 +31,15 @@ export async function searchImages(
 
 export async function searchEvents(
   query: string,
-  limit: number = 20
+  limit: number = 20,
+  options?: { threshold?: number; categoryId?: string }
 ): Promise<Event[]> {
+  const threshold = options?.threshold ?? 0.55
+  const categoryId = options?.categoryId
+
   const [vectorResults, textResults] = await Promise.all([
-    vectorSearchEvents(query, limit),
-    textSearchEvents(query, limit),
+    vectorSearchEvents(query, limit, threshold),
+    textSearchEvents(query, limit, categoryId),
   ])
 
   const seen = new Set<string>()
@@ -48,7 +52,7 @@ export async function searchEvents(
     }
   }
   for (const item of vectorResults) {
-    if (!seen.has(item.id)) {
+    if (!seen.has(item.id) && (!categoryId || item.category_id === categoryId)) {
       seen.add(item.id)
       merged.push(item)
     }
@@ -71,12 +75,13 @@ async function vectorSearchImages(query: string, limit: number): Promise<SearchR
   }
 }
 
-async function vectorSearchEvents(query: string, limit: number): Promise<Event[]> {
+async function vectorSearchEvents(query: string, limit: number, threshold: number = 0.55): Promise<Event[]> {
   try {
     const queryVector = await generateEmbedding(query)
     const { data, error } = await getSupabaseAdmin().rpc('search_events', {
       query_vector: queryVector,
       match_limit: limit,
+      match_threshold: threshold,
     })
     if (error) return []
     return (data as Event[]) ?? []
@@ -125,7 +130,7 @@ async function textSearchImages(query: string, limit: number): Promise<SearchRes
   }))
 }
 
-async function textSearchEvents(query: string, limit: number): Promise<Event[]> {
+async function textSearchEvents(query: string, limit: number, categoryId?: string): Promise<Event[]> {
   const escape = (s: string) => s.replace(/[%_\\]/g, '\\$&')
   const patterns = buildPatterns(query).map((s) => `%${escape(s)}%`)
   const cols = ['name', 'keywords', 'memo']
@@ -133,12 +138,15 @@ async function textSearchEvents(query: string, limit: number): Promise<Event[]> 
     .flatMap((p) => cols.map((col) => `${col}.ilike.${p}`))
     .join(',')
 
-  const { data } = await getSupabaseAdmin()
+  let q = getSupabaseAdmin()
     .from('events')
     .select('id, event_code, category_id, name, keywords, memo, search_text, created_at, updated_at')
     .or(orClause)
     .order('created_at', { ascending: false })
     .limit(limit)
 
+  if (categoryId) q = q.eq('category_id', categoryId)
+
+  const { data } = await q
   return (data as Event[]) ?? []
 }

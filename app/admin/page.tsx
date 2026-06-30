@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import BackButton from '@/components/BackButton'
 import Link from 'next/link'
 import SearchBox from '@/components/SearchBox'
 
@@ -16,6 +18,7 @@ interface AdminImage {
 }
 
 export default function AdminPage() {
+  const router = useRouter()
   const [images, setImages] = useState<AdminImage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [memos, setMemos] = useState<Record<string, string>>({})
@@ -112,7 +115,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link href="/" className="text-gray-500 hover:text-gray-700 text-sm">← 戻る</Link>
+          <BackButton />
           <h1 className="text-lg font-bold text-gray-800">検索登録</h1>
           <span className="text-sm text-gray-500 ml-auto">{displayImages.length} 件</span>
         </div>

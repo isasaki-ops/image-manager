@@ -1,12 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import SearchBox from '@/components/SearchBox'
 import EventGrid from '@/components/EventGrid'
 import type { EventWithStats } from '@/lib/supabase'
 
 const PAGE_SIZE = 40
+const CATEGORIES = [
+  { id: '01', label: '取材' },
+  { id: '02', label: '来店' },
+] as const
 
 export default function HomePage() {
   const [events, setEvents] = useState<EventWithStats[]>([])
@@ -16,15 +20,35 @@ export default function HomePage() {
   const [isSearchMode, setIsSearchMode] = useState(false)
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(false)
+  const [catFilter, setCatFilter] = useState<Set<string>>(new Set(['01', '02']))
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
+  const [searchBoxKey, setSearchBoxKey] = useState(0)
+  const [searchBoxInitial, setSearchBoxInitial] = useState<string | null>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const loadingMoreRef = useRef(false)
+  const initialQuery = useMemo(
+    () => (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('q') ?? '' : ''),
+    []
+  )
 
-  const fetchEvents = useCallback(async (query: string) => {
+  const buildCategoryParam = (filter: Set<string>) =>
+    filter.size === 1 ? [...filter][0] : undefined
+
+  const fetchEvents = useCallback(async (query: string, filter: Set<string> = catFilter) => {
+    // URLに検索クエリを保持（戻るボタンで復元できるよう）
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      if (query) url.searchParams.set('q', query)
+      else url.searchParams.delete('q')
+      window.history.replaceState(window.history.state, '', url.toString())
+    }
     setIsLoading(true)
     try {
+      const categoryParam = buildCategoryParam(filter)
+      const catSuffix = categoryParam ? `&category=${categoryParam}` : ''
       const url = query
-        ? `/api/events?q=${encodeURIComponent(query)}`
-        : '/api/events?offset=0'
+        ? `/api/events?q=${encodeURIComponent(query)}&threshold=0.55${catSuffix}`
+        : `/api/events?offset=0${catSuffix}`
       const res = await fetch(url)
       const data = await res.json()
       const evts: EventWithStats[] = data.events ?? []
@@ -38,14 +62,16 @@ export default function HomePage() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [catFilter])
 
   const loadMore = useCallback(async () => {
     if (loadingMoreRef.current || !hasMore) return
     loadingMoreRef.current = true
     setIsLoadingMore(true)
     try {
-      const res = await fetch(`/api/events?offset=${offset}`)
+      const categoryParam = buildCategoryParam(catFilter)
+      const catSuffix = categoryParam ? `&category=${categoryParam}` : ''
+      const res = await fetch(`/api/events?offset=${offset}${catSuffix}`)
       const data = await res.json()
       const evts: EventWithStats[] = data.events ?? []
       setEvents((prev) => [...prev, ...evts])
@@ -55,9 +81,28 @@ export default function HomePage() {
       loadingMoreRef.current = false
       setIsLoadingMore(false)
     }
-  }, [hasMore, offset])
+  }, [hasMore, offset, catFilter])
 
-  useEffect(() => { fetchEvents('') }, [fetchEvents])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchEvents(initialQuery) }, [])
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const q = new URLSearchParams(window.location.search).get('q') ?? ''
+      setSearchBoxInitial(q)
+      setSearchBoxKey((k) => k + 1)
+      fetchEvents(q)
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [fetchEvents])
+
+  useEffect(() => {
+    fetch('/api/events/counts')
+      .then((r) => r.json())
+      .then((data) => setCategoryCounts(data))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -70,16 +115,43 @@ export default function HomePage() {
     return () => observer.disconnect()
   }, [loadMore])
 
+  const handleCatToggle = (id: string) => {
+    setCatFilter((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        if (next.size === 1) return prev // 最低1つは残す
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      fetchEvents(searchQuery, next)
+      return next
+    })
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
-          <div className="whitespace-nowrap">
-            <h1 className="text-lg font-bold text-gray-800 leading-tight">EVENT MANAGER</h1>
-            <p className="text-xs text-gray-400">パチンコ・パチスロ取材イベント管理</p>
-          </div>
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              setSearchBoxInitial('')
+              setSearchBoxKey((k) => k + 1)
+              fetchEvents('')
+            }}
+            className="whitespace-nowrap text-left hover:opacity-70 transition-opacity"
+          >
+            <h1 className="text-lg font-bold text-gray-800 leading-tight">Event Manager</h1>
+            <p className="text-xs text-gray-400">パチンコ・パチスロイベント管理</p>
+          </button>
           <div className="flex-1">
-            <SearchBox onSearch={fetchEvents} isLoading={isLoading} />
+            <SearchBox
+              key={searchBoxKey}
+              onSearch={fetchEvents}
+              isLoading={isLoading}
+              initialValue={searchBoxInitial ?? initialQuery}
+            />
           </div>
           <Link
             href="/events/new"
@@ -88,11 +160,35 @@ export default function HomePage() {
             + イベント登録
           </Link>
           <Link
+            href="/unlinked"
+            className="px-3 py-2 bg-amber-50 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-100 transition-colors whitespace-nowrap"
+          >
+            未設定画像
+          </Link>
+          <Link
             href="/upload"
             className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors whitespace-nowrap"
           >
             画像アップ
           </Link>
+        </div>
+
+        {/* カテゴリフィルター */}
+        <div className="max-w-7xl mx-auto px-4 pb-2 flex items-center gap-5">
+          {CATEGORIES.map(({ id, label }) => (
+            <label key={id} className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={catFilter.has(id)}
+                onChange={() => handleCatToggle(id)}
+                className="w-4 h-4 accent-blue-600"
+              />
+              <span className="text-sm text-gray-700">{label}</span>
+              {categoryCounts[id] != null && (
+                <span className="text-xs text-gray-400">({categoryCounts[id]}件)</span>
+              )}
+            </label>
+          ))}
         </div>
       </header>
 

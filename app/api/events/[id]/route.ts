@@ -46,6 +46,7 @@ export async function PATCH(
     if ('name' in body) update.name = body.name?.trim() || null
     if ('keywords' in body) update.keywords = body.keywords?.trim() || null
     if ('memo' in body) update.memo = body.memo?.trim() || null
+    if ('category_id' in body) update.category_id = body.category_id
 
     // Regenerate embedding when name or keywords change; auto-generate keywords if cleared
     if ('name' in body || 'keywords' in body) {
