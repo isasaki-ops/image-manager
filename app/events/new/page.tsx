@@ -85,7 +85,7 @@ export default function NewEventPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例：天下無双、バズーカ、梅屋シン来店"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
@@ -94,14 +94,14 @@ export default function NewEventPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               検索キーワード
-              <span className="text-xs text-gray-400 ml-2">（空欄の場合はAIが自動生成）</span>
+              <span className="text-xs text-gray-400 ml-2">（検索文字をスペースで区切って入れてください。空欄の場合はAIが自動生成します）</span>
             </label>
             <textarea
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
               rows={3}
               placeholder="てんかむそう てんか むそう…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
           </div>
 
@@ -113,7 +113,7 @@ export default function NewEventPage() {
               onChange={(e) => setMemo(e.target.value)}
               rows={4}
               placeholder="自由記入"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
           </div>
 

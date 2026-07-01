@@ -22,6 +22,7 @@ export default function HomePage() {
   const [hasMore, setHasMore] = useState(false)
   const [catFilter, setCatFilter] = useState<Set<string>>(new Set(['01', '02']))
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
+  const [noImages, setNoImages] = useState(false)
   const [searchBoxKey, setSearchBoxKey] = useState(0)
   const [searchBoxInitial, setSearchBoxInitial] = useState<string | null>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -34,7 +35,7 @@ export default function HomePage() {
   const buildCategoryParam = (filter: Set<string>) =>
     filter.size === 1 ? [...filter][0] : undefined
 
-  const fetchEvents = useCallback(async (query: string, filter: Set<string> = catFilter) => {
+  const fetchEvents = useCallback(async (query: string, filter: Set<string> = catFilter, noImagesOverride?: boolean) => {
     // URLに検索クエリを保持（戻るボタンで復元できるよう）
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
@@ -43,26 +44,28 @@ export default function HomePage() {
       window.history.replaceState(window.history.state, '', url.toString())
     }
     setIsLoading(true)
+    const noImgs = noImagesOverride !== undefined ? noImagesOverride : noImages
     try {
       const categoryParam = buildCategoryParam(filter)
       const catSuffix = categoryParam ? `&category=${categoryParam}` : ''
+      const noImgSuffix = noImgs ? '&noImages=true' : ''
       const url = query
-        ? `/api/events?q=${encodeURIComponent(query)}&threshold=0.55${catSuffix}`
-        : `/api/events?offset=0${catSuffix}`
+        ? `/api/events?q=${encodeURIComponent(query)}&threshold=0.55${catSuffix}${noImgSuffix}`
+        : `/api/events?offset=0${catSuffix}${noImgSuffix}`
       const res = await fetch(url)
       const data = await res.json()
       const evts: EventWithStats[] = data.events ?? []
       setEvents(evts)
       setSearchQuery(query)
       setIsSearchMode(!!query)
-      setHasMore(!query && (data.hasMore ?? false))
+      setHasMore(!query && !noImgs && (data.hasMore ?? false))
       setOffset(query ? 0 : PAGE_SIZE)
     } catch {
       setEvents([])
     } finally {
       setIsLoading(false)
     }
-  }, [catFilter])
+  }, [catFilter, noImages])
 
   const loadMore = useCallback(async () => {
     if (loadingMoreRef.current || !hasMore) return
@@ -129,6 +132,12 @@ export default function HomePage() {
     })
   }
 
+  const handleNoImagesToggle = () => {
+    const next = !noImages
+    setNoImages(next)
+    fetchEvents(searchQuery, catFilter, next)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
@@ -189,6 +198,16 @@ export default function HomePage() {
               )}
             </label>
           ))}
+          <div className="w-px h-4 bg-gray-200" />
+          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={noImages}
+              onChange={handleNoImagesToggle}
+              className="w-4 h-4 accent-amber-500"
+            />
+            <span className="text-sm text-gray-700">画像未設定</span>
+          </label>
         </div>
       </header>
 

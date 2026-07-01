@@ -165,7 +165,7 @@ export default function UploadForm() {
                   value={eventSearch}
                   onChange={(e) => setEventSearch(e.target.value)}
                   placeholder="イベントを検索（空欄でイベント未設定）"
-                  className="flex-1 text-sm outline-none bg-transparent"
+                  className="flex-1 text-sm text-gray-900 outline-none bg-transparent"
                 />
                 {searchingEvents && (
                   <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />

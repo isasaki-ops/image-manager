@@ -463,7 +463,7 @@ export default function EventDetailPage() {
             onChange={(e) => setKeywords(e.target.value)}
             rows={3}
             placeholder="（未設定）"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 resize-none"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 resize-none"
           />
         </section>
 
@@ -475,7 +475,7 @@ export default function EventDetailPage() {
             onChange={(e) => setMemo(e.target.value)}
             rows={5}
             placeholder="（未記入）"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 resize-none"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 resize-none"
           />
         </section>
 
@@ -519,15 +519,8 @@ export default function EventDetailPage() {
                     onCreated600x400={handleCreated600x400}
                     hasThumbnail={!!thumbnail}
                   />
-                  {thumbnail ? (
+                  {thumbnail && (
                     <ImageThumb img={thumbnail} onDelete={handleDeleteImage} onUnlink={handleUnlinkImage} isThumbnail />
-                  ) : (
-                    <div className="space-y-1.5">
-                      <p className="text-xs font-semibold text-gray-300">---</p>
-                      <div className="w-full aspect-[3/2] bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
-                        <p className="text-xs text-gray-400">未作成</p>
-                      </div>
-                    </div>
                   )}
                 </div>
               ))}
@@ -572,7 +565,7 @@ export default function EventDetailPage() {
                       value={pickerSearch}
                       onChange={(e) => setPickerSearch(e.target.value)}
                       placeholder="ファイル名で絞り込み…"
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   )}
                 </div>
@@ -619,23 +612,23 @@ export default function EventDetailPage() {
 
       {/* スティッキー保存バー */}
       {isDirty && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
-          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-            <p className="text-sm text-amber-600 font-medium">未保存の変更があります</p>
-            <div className="flex gap-2">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 shadow-2xl">
+          <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+            <p className="text-sm text-amber-400 font-semibold">⚠ 未保存の変更があります</p>
+            <div className="flex gap-3">
               <button
                 onClick={handleReset}
                 disabled={saving}
-                className="text-sm px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 transition-colors"
+                className="text-sm px-4 py-2 text-gray-400 hover:text-white disabled:opacity-40 transition-colors"
               >
                 変更を破棄
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="text-sm px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
+                className="text-sm px-8 py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-400 disabled:opacity-50 font-bold shadow-lg shadow-green-900/40 transition-colors"
               >
-                {saving ? '保存中…' : '保存'}
+                {saving ? '保存中…' : '保存する'}
               </button>
             </div>
           </div>
