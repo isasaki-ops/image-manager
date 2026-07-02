@@ -147,36 +147,36 @@ export default function UploadForm() {
 
         {/* イベント選択 */}
         <div ref={dropdownRef} className="relative">
-          <label className="block text-sm font-medium text-gray-700 mb-1">イベント</label>
+          <label className="block text-sm font-medium text-zinc-400 mb-1">イベント</label>
           {selectedEventId ? (
-            <div className="flex items-center gap-2 border border-blue-300 bg-blue-50 rounded-lg px-3 py-2">
-              <span className="flex-1 text-sm text-blue-800 font-medium">{selectedEventName}</span>
+            <div className="flex items-center gap-2 border border-fuchsia-400/70 bg-black shadow-[0_0_10px_rgba(217,70,239,0.25)] rounded-lg px-3 py-2">
+              <span className="flex-1 text-sm text-fuchsia-300 font-medium">{selectedEventName}</span>
               {!presetEventId && (
-                <button type="button" onClick={clearEvent} className="text-blue-400 hover:text-blue-600 text-lg leading-none">×</button>
+                <button type="button" onClick={clearEvent} className="text-fuchsia-400/70 hover:text-fuchsia-300 text-lg leading-none">×</button>
               )}
             </div>
           ) : (
             <>
               <div
-                className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-2 cursor-text bg-white"
+                className="flex items-center gap-2 border border-zinc-700 rounded-lg px-3 py-2 cursor-text bg-black focus-within:border-fuchsia-400 focus-within:shadow-[0_0_10px_rgba(217,70,239,0.35)]"
               >
                 <input
                   type="text"
                   value={eventSearch}
                   onChange={(e) => setEventSearch(e.target.value)}
                   placeholder="イベントを検索（空欄でイベント未設定）"
-                  className="flex-1 text-sm text-gray-900 outline-none bg-transparent"
+                  className="flex-1 text-sm text-zinc-100 outline-none bg-transparent placeholder-zinc-600"
                 />
                 {searchingEvents && (
-                  <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-3 h-3 border-2 border-fuchsia-400 border-t-transparent rounded-full animate-spin" />
                 )}
               </div>
               {showDropdown && (
-                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                <div className="absolute z-20 w-full mt-1 bg-zinc-950 border border-fuchsia-400/40 rounded-xl shadow-[0_0_20px_rgba(217,70,239,0.2)] max-h-64 overflow-y-auto">
                   <button
                     type="button"
                     onClick={clearEvent}
-                    className="w-full text-left px-4 py-2.5 text-sm text-gray-400 hover:bg-gray-50 border-b border-gray-100"
+                    className="w-full text-left px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-900 border-b border-zinc-800"
                   >
                     イベント未設定
                   </button>
@@ -185,17 +185,17 @@ export default function UploadForm() {
                       key={e.id}
                       type="button"
                       onClick={() => selectEvent(e)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                      className="w-full text-left px-4 py-2.5 hover:bg-zinc-900 transition-colors"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400 font-mono">{e.event_code}</span>
-                        <span className="text-xs text-gray-400">{CATEGORY_LABEL[e.category_id]}</span>
+                        <span className="text-xs text-lime-400/80 font-mono">{e.event_code}</span>
+                        <span className="text-xs text-zinc-500">{CATEGORY_LABEL[e.category_id]}</span>
                       </div>
-                      <p className="text-sm font-medium text-gray-800">{e.name}</p>
+                      <p className="text-sm font-medium text-zinc-200">{e.name}</p>
                     </button>
                   ))}
                   {eventOptions.length === 0 && !searchingEvents && (
-                    <p className="px-4 py-3 text-sm text-gray-400">見つかりません</p>
+                    <p className="px-4 py-3 text-sm text-zinc-500">見つかりません</p>
                   )}
                 </div>
               )}
@@ -209,12 +209,12 @@ export default function UploadForm() {
           onDragLeave={() => setIsDragging(false)}
           onDrop={onDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+          className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
             isDragging
-              ? 'border-blue-500 bg-blue-50'
+              ? 'border-cyan-400 bg-cyan-400/5 shadow-[0_0_20px_rgba(34,211,238,0.25)]'
               : file
-              ? 'border-green-400 bg-green-50'
-              : 'border-gray-300 hover:border-gray-400'
+              ? 'border-emerald-400 bg-emerald-400/5 shadow-[0_0_20px_rgba(52,211,153,0.2)]'
+              : 'border-zinc-700 hover:border-cyan-400/60'
           }`}
         >
           <input
@@ -225,14 +225,14 @@ export default function UploadForm() {
           />
           {file ? (
             <div>
-              <p className="font-medium text-green-700">{file.name}</p>
-              <p className="text-sm text-green-600">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+              <p className="font-medium text-emerald-300">{file.name}</p>
+              <p className="text-sm text-emerald-400/70">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
             </div>
           ) : (
-            <div className="text-gray-500">
+            <div className="text-zinc-500">
               <p className="text-base">ここにドラッグ&ドロップ</p>
               <p className="text-sm mt-1">または クリックしてファイルを選択</p>
-              <p className="text-xs mt-2 text-gray-400">すべてのファイル形式対応（PSD含む）· 最大100MB</p>
+              <p className="text-xs mt-2 text-zinc-600">すべてのファイル形式対応（PSD含む）· 最大100MB</p>
             </div>
           )}
         </div>
@@ -244,31 +244,31 @@ export default function UploadForm() {
             checked={createThumbnail}
             disabled={!resizable}
             onChange={(e) => setCreateThumbnail(e.target.checked)}
-            className="w-4 h-4 accent-blue-600"
+            className="w-4 h-4 accent-fuchsia-400"
           />
-          <span className="text-sm text-gray-700">
+          <span className="text-sm text-zinc-300">
             600×400で複製
             {file && !resizable && (
-              <span className="ml-2 text-xs text-gray-400">（このファイル形式は非対応）</span>
+              <span className="ml-2 text-xs text-zinc-600">（このファイル形式は非対応）</span>
             )}
           </span>
         </label>
 
-        {errorMsg && <p className="text-red-600 text-sm">{errorMsg}</p>}
+        {errorMsg && <p className="text-rose-400 text-sm">{errorMsg}</p>}
 
         <button
           type="submit"
           disabled={!file || progress === 'uploading'}
-          className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-2.5 bg-black text-fuchsia-300 border border-fuchsia-400 rounded-lg font-bold shadow-[0_0_16px_rgba(217,70,239,0.5)] hover:bg-fuchsia-400 hover:text-black hover:shadow-[0_0_26px_rgba(217,70,239,0.85)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-black disabled:hover:text-fuchsia-300 transition-all"
         >
           {progress === 'uploading' ? 'アップロード中...' : 'アップロード'}
         </button>
       </form>
 
       {progress === 'success' && result && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 font-medium text-sm">アップロード完了！</p>
-          <p className="text-xs text-green-600 mt-1 break-all">{result.r2_url}</p>
+        <div className="p-4 bg-black border border-emerald-400/60 shadow-[0_0_16px_rgba(52,211,153,0.25)] rounded-lg">
+          <p className="text-emerald-300 font-medium text-sm">アップロード完了！</p>
+          <p className="text-xs text-emerald-400/70 mt-1 break-all">{result.r2_url}</p>
             </div>
       )}
     </div>

@@ -7,8 +7,8 @@ import type { ImageRecord, EventWithStats } from '@/lib/supabase'
 
 const CATEGORY_LABEL: Record<string, string> = { '01': '取材', '02': '来店' }
 const CATEGORY_COLOR: Record<string, string> = {
-  '01': 'bg-blue-100 text-blue-700',
-  '02': 'bg-pink-100 text-pink-700',
+  '01': 'bg-black text-cyan-300 border border-cyan-400/70',
+  '02': 'bg-black text-fuchsia-300 border border-fuchsia-400/70',
 }
 const SEARCH_THRESHOLD = 0.55
 
@@ -33,13 +33,13 @@ function ImageCard({ img, onDelete }: { img: ImageRecord; onDelete?: (id: string
 
   return (
     <div className="space-y-1">
-      <p className="text-xs font-semibold text-gray-500">{sizeLabel}</p>
-      <div className="relative w-full aspect-[3/2] bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+      <p className="text-xs font-semibold text-zinc-500">{sizeLabel}</p>
+      <div className="relative w-full aspect-[3/2] bg-zinc-900 rounded-lg overflow-hidden border border-zinc-700">
         {img.r2_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={img.r2_url} alt={img.file_name ?? ''} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-300">
+          <div className="w-full h-full flex items-center justify-center text-zinc-700">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
@@ -47,12 +47,12 @@ function ImageCard({ img, onDelete }: { img: ImageRecord; onDelete?: (id: string
           </div>
         )}
       </div>
-      <p className="text-xs text-gray-400 truncate">{img.file_name}</p>
+      <p className="text-xs text-zinc-500 truncate">{img.file_name}</p>
       {onDelete && (
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className="w-full text-xs py-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+          className="w-full text-xs py-1.5 bg-black text-rose-300 border border-rose-400/70 rounded-lg shadow-[0_0_8px_rgba(251,113,133,0.35)] hover:bg-rose-400 hover:text-black hover:shadow-[0_0_14px_rgba(251,113,133,0.8)] disabled:opacity-50 transition-all"
         >
           {deleting ? '削除中…' : '削除'}
         </button>
@@ -136,7 +136,7 @@ function EventPicker({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="w-full text-xs py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium"
+        className="w-full text-xs py-2 bg-black text-cyan-300 border border-cyan-400/70 rounded-lg shadow-[0_0_8px_rgba(34,211,238,0.35)] hover:bg-cyan-400 hover:text-black hover:shadow-[0_0_14px_rgba(34,211,238,0.8)] transition-all font-medium"
       >
         イベントを設定
       </button>
@@ -151,12 +151,12 @@ function EventPicker({
           <button
             key={cat}
             onClick={() => setCategory(cat)}
-            className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+            className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
               category === cat
-                ? cat === '01' ? 'bg-blue-600 text-white'
-                  : cat === '02' ? 'bg-pink-500 text-white'
-                  : 'bg-gray-700 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? cat === '01' ? 'bg-cyan-400 text-black border-cyan-400'
+                  : cat === '02' ? 'bg-fuchsia-400 text-black border-fuchsia-400'
+                  : 'bg-zinc-200 text-black border-zinc-200'
+                : 'bg-black text-zinc-400 border-zinc-700 hover:border-zinc-500'
             }`}
           >
             {cat === '' ? '全て' : CATEGORY_LABEL[cat]}
@@ -170,27 +170,27 @@ function EventPicker({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="イベント名で検索…"
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full bg-black border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)]"
       />
 
       {/* Results */}
       {query.trim() && (
         searching ? (
-          <p className="text-xs text-gray-400 text-center py-4">検索中…</p>
+          <p className="text-xs text-zinc-500 text-center py-4">検索中…</p>
         ) : events.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-4">一致するイベントがありません</p>
+          <p className="text-xs text-zinc-500 text-center py-4">一致するイベントがありません</p>
         ) : (
-          <div className="max-h-56 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+          <div className="max-h-56 overflow-y-auto border border-zinc-800 rounded-lg divide-y divide-zinc-800">
             {events.map((e) => (
               <button
                 key={e.id}
                 onClick={() => handleLink(e.id)}
                 disabled={linking}
-                className="w-full text-left px-3 py-2 hover:bg-blue-50 disabled:opacity-50 transition-colors flex items-center gap-2"
+                className="w-full text-left px-3 py-2 bg-black hover:bg-zinc-900 disabled:opacity-50 transition-colors flex items-center gap-2"
               >
-                <span className="text-xs font-mono text-gray-400 shrink-0">{e.event_code}</span>
-                <span className="text-xs text-gray-800 flex-1 truncate">{e.name}</span>
-                <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${CATEGORY_COLOR[e.category_id] ?? 'bg-gray-100 text-gray-600'}`}>
+                <span className="text-xs font-mono text-lime-400/80 shrink-0">{e.event_code}</span>
+                <span className="text-xs text-zinc-200 flex-1 truncate">{e.name}</span>
+                <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${CATEGORY_COLOR[e.category_id] ?? 'bg-zinc-800 text-zinc-400'}`}>
                   {CATEGORY_LABEL[e.category_id] ?? e.category_id}
                 </span>
               </button>
@@ -199,7 +199,7 @@ function EventPicker({
         )
       )}
 
-      <button onClick={handleClose} className="text-xs text-gray-400 hover:text-gray-600">
+      <button onClick={handleClose} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
         キャンセル
       </button>
     </div>
@@ -235,13 +235,13 @@ export default function UnlinkedPage() {
   const totalCount = images.length
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
+    <div className="min-h-screen">
+      <header className="bg-black/70 backdrop-blur border-b border-lime-400/40">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           <BackButton />
-          <h1 className="text-base font-bold text-gray-800">イベント未設定画像</h1>
+          <h1 className="text-base font-bold text-white [text-shadow:0_0_6px_#a3e635,0_0_16px_rgba(163,230,53,0.5)]">イベント未設定画像</h1>
           {!isLoading && (
-            <span className="text-sm text-gray-400">{totalCount} 枚</span>
+            <span className="text-sm text-zinc-500">{totalCount} 枚</span>
           )}
         </div>
       </header>
@@ -249,16 +249,16 @@ export default function UnlinkedPage() {
       <main className="max-w-5xl mx-auto px-4 py-6">
         {isLoading ? (
           <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin shadow-[0_0_12px_rgba(34,211,238,0.6)]" />
           </div>
         ) : totalCount === 0 ? (
           <div className="text-center py-20">
-            <p className="text-gray-400">未設定の画像はありません</p>
+            <p className="text-zinc-600">未設定の画像はありません</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
             {images.map((img) => (
-              <div key={img.id} className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+              <div key={img.id} className="bg-zinc-950 rounded-2xl border border-lime-400/20 shadow-[0_0_16px_rgba(163,230,53,0.08)] p-4 space-y-3">
                 <ImageCard img={img} onDelete={handleDeleted} />
                 <EventPicker imageId={img.id} pairedImageId={null} onLinked={handleLinked} />
               </div>

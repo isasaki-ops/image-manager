@@ -139,8 +139,8 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-cyan-400/40 shadow-[0_0_24px_rgba(34,211,238,0.15)]">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
           <button
             onClick={(e) => {
@@ -149,12 +149,14 @@ export default function HomePage() {
               setSearchBoxKey((k) => k + 1)
               fetchEvents('')
             }}
-            className="whitespace-nowrap text-left hover:opacity-70 transition-opacity"
+            className="whitespace-nowrap text-left hover:opacity-80 transition-opacity"
           >
-            <h1 className="text-lg font-bold text-gray-800 leading-tight">Event Manager</h1>
-            <p className="text-xs text-gray-400">パチンコ・パチスロイベント管理</p>
+            <h1 className="text-lg font-black leading-tight tracking-wide text-white [text-shadow:0_0_6px_#22d3ee,0_0_20px_rgba(34,211,238,0.6)]">
+              イベントマネージャー
+            </h1>
+            <p className="text-xs text-cyan-300/60">パチンコ・パチスロイベント管理</p>
           </button>
-          <div className="flex-1">
+          <div className="flex-1 max-w-md">
             <SearchBox
               key={searchBoxKey}
               onSearch={fetchEvents}
@@ -162,23 +164,25 @@ export default function HomePage() {
               initialValue={searchBoxInitial ?? initialQuery}
             />
           </div>
-          <Link
-            href="/events/new"
-            className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors whitespace-nowrap"
-          >
-            + イベント登録
-          </Link>
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/events/new"
+              className="px-5 py-2.5 bg-black text-cyan-300 border border-cyan-400 rounded-xl text-base font-bold shadow-[0_0_16px_rgba(34,211,238,0.55)] hover:bg-cyan-400 hover:text-black hover:shadow-[0_0_26px_rgba(34,211,238,0.9)] transition-all whitespace-nowrap"
+            >
+              + イベント登録
+            </Link>
+            <Link
+              href="/upload"
+              className="px-5 py-2.5 bg-black text-fuchsia-300 border border-fuchsia-400 rounded-xl text-base font-bold shadow-[0_0_16px_rgba(217,70,239,0.55)] hover:bg-fuchsia-400 hover:text-black hover:shadow-[0_0_26px_rgba(217,70,239,0.9)] transition-all whitespace-nowrap"
+            >
+              画像アップロード
+            </Link>
+          </div>
           <Link
             href="/unlinked"
-            className="px-3 py-2 bg-amber-50 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-100 transition-colors whitespace-nowrap"
+            className="px-3 py-2 bg-black text-lime-300 border border-lime-400/50 rounded-xl text-sm font-medium hover:border-lime-400 hover:shadow-[0_0_12px_rgba(163,230,53,0.5)] transition-all whitespace-nowrap"
           >
-            未設定画像
-          </Link>
-          <Link
-            href="/upload"
-            className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors whitespace-nowrap"
-          >
-            画像アップ
+            未設定画像一覧
           </Link>
         </div>
 
@@ -190,36 +194,36 @@ export default function HomePage() {
                 type="checkbox"
                 checked={catFilter.has(id)}
                 onChange={() => handleCatToggle(id)}
-                className="w-4 h-4 accent-blue-600"
+                className="w-4 h-4 accent-cyan-400"
               />
-              <span className="text-sm text-gray-700">{label}</span>
+              <span className="text-sm text-zinc-300">{label}</span>
               {categoryCounts[id] != null && (
-                <span className="text-xs text-gray-400">({categoryCounts[id]}件)</span>
+                <span className="text-xs text-zinc-500">({categoryCounts[id]}件)</span>
               )}
             </label>
           ))}
-          <div className="w-px h-4 bg-gray-200" />
+          <div className="w-px h-4 bg-zinc-700" />
           <label className="flex items-center gap-1.5 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={noImages}
               onChange={handleNoImagesToggle}
-              className="w-4 h-4 accent-amber-500"
+              className="w-4 h-4 accent-amber-400"
             />
-            <span className="text-sm text-gray-700">画像未設定</span>
+            <span className="text-sm text-zinc-300">画像未設定</span>
           </label>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         {isSearchMode && !isLoading && (
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-zinc-400 mb-4">
             「{searchQuery}」の検索結果 — {events.length} 件
           </p>
         )}
         {isLoading ? (
           <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin shadow-[0_0_12px_rgba(34,211,238,0.6)]" />
           </div>
         ) : (
           <>
@@ -227,11 +231,11 @@ export default function HomePage() {
             <div ref={sentinelRef} className="h-1 mt-4" />
             {isLoadingMore && (
               <div className="flex justify-center py-6">
-                <div className="w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin shadow-[0_0_12px_rgba(34,211,238,0.6)]" />
               </div>
             )}
             {!isSearchMode && !hasMore && events.length > 0 && (
-              <p className="text-center text-sm text-gray-400 py-6">全 {events.length} 件</p>
+              <p className="text-center text-sm text-zinc-500 py-6">全 {events.length} 件</p>
             )}
           </>
         )}

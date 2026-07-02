@@ -41,3 +41,10 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# local working files (exports, downloads, editor workspace)
+*.xlsx
+*.csv
+wp-downloads/
+wp.txt
+*.code-workspace

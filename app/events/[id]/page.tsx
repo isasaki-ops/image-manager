@@ -8,8 +8,8 @@ import type { Event, ImageRecord } from '@/lib/supabase'
 
 const CATEGORY_LABEL: Record<string, string> = { '01': '取材', '02': '来店' }
 const CATEGORY_COLOR: Record<string, string> = {
-  '01': 'bg-blue-100 text-blue-700',
-  '02': 'bg-pink-100 text-pink-700',
+  '01': 'bg-black text-cyan-300 border border-cyan-400/70',
+  '02': 'bg-black text-fuchsia-300 border border-fuchsia-400/70',
 }
 
 interface ImagePair {
@@ -40,6 +40,7 @@ function ImageThumb({
   onDelete,
   onUnlink,
   onCreated600x400,
+  onRenamed,
   isThumbnail,
   hasThumbnail,
 }: {
@@ -47,6 +48,7 @@ function ImageThumb({
   onDelete: (id: string) => void
   onUnlink: (id: string) => void
   onCreated600x400?: (newImg: ImageRecord) => void
+  onRenamed: (id: string, fileName: string) => void
   isThumbnail?: boolean
   hasThumbnail?: boolean
 }) {
@@ -56,6 +58,9 @@ function ImageThumb({
   const [wpUploading, setWpUploading] = useState(false)
   const [wpDone, setWpDone] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState(img.file_name ?? '')
+  const [savingName, setSavingName] = useState(false)
 
   const isAlready600x400 = img.image_width === 600 && img.image_height === 400
 
@@ -126,6 +131,7 @@ function ImageThumb({
 
   const handleWpUpload = async () => {
     if (wpDone && !confirm('すでにWPに登録済みです。再アップロードしますか？')) return
+    if (!confirm('ファイル名の先頭に image_ を付けてアップロードします。よろしいですか？')) return
     setWpUploading(true)
     try {
       const res = await fetch(`/api/images/${img.id}/wp-upload`, { method: 'POST' })
@@ -147,15 +153,46 @@ function ImageThumb({
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const startEditName = () => {
+    setNameValue(img.file_name ?? '')
+    setEditingName(true)
+  }
+
+  const handleSaveName = async () => {
+    const trimmed = nameValue.trim()
+    if (!trimmed || trimmed === img.file_name) {
+      setEditingName(false)
+      setNameValue(img.file_name ?? '')
+      return
+    }
+    setSavingName(true)
+    try {
+      const res = await fetch(`/api/images/${img.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_name: trimmed }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? '変更に失敗しました')
+      onRenamed(img.id, trimmed)
+      setEditingName(false)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '変更に失敗しました')
+      setNameValue(img.file_name ?? '')
+    } finally {
+      setSavingName(false)
+    }
+  }
+
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-semibold text-gray-500">{sizeLabel}</p>
-      <div className="relative w-full aspect-[3/2] bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+      <p className="inline-block text-xs font-bold text-cyan-300 bg-cyan-400/10 border border-cyan-400/30 rounded px-1.5 py-0.5">{sizeLabel}</p>
+      <div className="relative w-full aspect-[3/2] bg-zinc-900 rounded-lg overflow-hidden border border-zinc-700">
         {img.r2_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={img.r2_url} alt={img.file_name ?? ''} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-300">
+          <div className="w-full h-full flex items-center justify-center text-zinc-700">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
@@ -163,15 +200,39 @@ function ImageThumb({
           </div>
         )}
       </div>
-      <p className="text-xs text-gray-400 truncate">{img.file_name}</p>
+      {editingName ? (
+        <input
+          value={nameValue}
+          onChange={(e) => setNameValue(e.target.value)}
+          onBlur={handleSaveName}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+            if (e.key === 'Escape') {
+              setNameValue(img.file_name ?? '')
+              setEditingName(false)
+            }
+          }}
+          disabled={savingName}
+          autoFocus
+          className="w-full text-xs text-zinc-100 bg-black border border-cyan-400 rounded px-1 py-0.5 focus:outline-none focus:shadow-[0_0_8px_rgba(34,211,238,0.5)]"
+        />
+      ) : (
+        <p
+          onClick={startEditName}
+          title="クリックしてファイル名を変更"
+          className="text-xs font-medium text-zinc-200 truncate cursor-pointer hover:text-cyan-300 hover:underline"
+        >
+          {img.file_name}
+        </p>
+      )}
       {img.r2_url && (
-        <p className="text-xs text-gray-300 truncate font-mono" title={img.r2_url}>{img.r2_url}</p>
+        <p className="text-xs text-zinc-400 truncate font-mono" title={img.r2_url}>{img.r2_url}</p>
       )}
       <div className="grid grid-cols-2 gap-1.5">
         <a
           href={`/api/images/${img.id}/download`}
           download={img.file_name ?? undefined}
-          className="text-center text-xs py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+          className="text-center text-xs py-1.5 bg-black text-cyan-300 border border-cyan-400/70 font-medium rounded-lg shadow-[0_0_8px_rgba(34,211,238,0.35)] hover:bg-cyan-400 hover:text-black hover:shadow-[0_0_14px_rgba(34,211,238,0.8)] transition-all"
         >
           DL
         </a>
@@ -180,8 +241,8 @@ function ImageThumb({
           disabled={isThumbnail || isAlready600x400 || creating}
           className={
             isThumbnail || isAlready600x400
-              ? 'text-xs py-1.5 bg-gray-100 text-gray-400 rounded-lg cursor-not-allowed'
-              : 'text-xs py-1.5 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100 disabled:opacity-50 transition-colors'
+              ? 'text-xs py-1.5 bg-zinc-900 text-zinc-600 border border-zinc-800 rounded-lg cursor-not-allowed'
+              : 'text-xs py-1.5 bg-black text-teal-300 border border-teal-400/70 font-medium rounded-lg shadow-[0_0_8px_rgba(45,212,191,0.35)] hover:bg-teal-400 hover:text-black hover:shadow-[0_0_14px_rgba(45,212,191,0.8)] disabled:opacity-50 transition-all'
           }
         >
           {creating ? '作成中…' : '600×400作成'}
@@ -189,28 +250,28 @@ function ImageThumb({
         <button
           onClick={handleCopyUrl}
           disabled={!img.r2_url}
-          className="text-xs py-1.5 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 disabled:opacity-40 transition-colors"
+          className="text-xs py-1.5 bg-black text-zinc-300 border border-zinc-500/70 font-medium rounded-lg hover:bg-zinc-200 hover:text-black hover:shadow-[0_0_14px_rgba(212,212,216,0.5)] disabled:opacity-40 transition-all"
         >
           {copied ? 'コピー済！' : 'URLコピー'}
         </button>
         <button
           onClick={handleWpUpload}
           disabled={wpUploading}
-          className="text-xs py-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 disabled:opacity-50 transition-colors"
+          className="text-xs py-1.5 bg-black text-violet-300 border border-violet-400/70 font-medium rounded-lg shadow-[0_0_8px_rgba(167,139,250,0.35)] hover:bg-violet-400 hover:text-black hover:shadow-[0_0_14px_rgba(167,139,250,0.8)] disabled:opacity-50 transition-all"
         >
           {wpUploading ? '登録中…' : wpDone ? 'WP登録済' : 'WP登録'}
         </button>
         <button
           onClick={handleUnlink}
           disabled={unlinking}
-          className="text-xs py-1.5 bg-orange-50 text-orange-500 rounded-lg hover:bg-orange-100 disabled:opacity-50 transition-colors"
+          className="text-xs py-1.5 bg-black text-amber-300 border border-amber-400/70 font-medium rounded-lg shadow-[0_0_8px_rgba(251,191,36,0.35)] hover:bg-amber-400 hover:text-black hover:shadow-[0_0_14px_rgba(251,191,36,0.8)] disabled:opacity-50 transition-all"
         >
           {unlinking ? '…' : '紐付け解除'}
         </button>
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className="text-xs py-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+          className="text-xs py-1.5 bg-black text-rose-300 border border-rose-400/70 font-medium rounded-lg shadow-[0_0_8px_rgba(251,113,133,0.35)] hover:bg-rose-400 hover:text-black hover:shadow-[0_0_14px_rgba(251,113,133,0.8)] disabled:opacity-50 transition-all"
         >
           {deleting ? '…' : '削除'}
         </button>
@@ -378,6 +439,10 @@ export default function EventDetailPage() {
     setImages((prev) => [...prev, newImg])
   }
 
+  const handleRenamedImage = (imageId: string, fileName: string) => {
+    setImages((prev) => prev.map((i) => (i.id === imageId ? { ...i, file_name: fileName } : i)))
+  }
+
   const handleDeleteEvent = async () => {
     if (!confirm(`「${event?.name}」を削除しますか？\n（紐づいている画像はイベント未設定になります）`)) return
     const res = await fetch(`/api/events/${id}`, { method: 'DELETE' })
@@ -387,16 +452,16 @@ export default function EventDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin shadow-[0_0_12px_rgba(34,211,238,0.6)]" />
       </div>
     )
   }
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">イベントが見つかりません</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-zinc-500">イベントが見つかりません</p>
       </div>
     )
   }
@@ -404,13 +469,13 @@ export default function EventDetailPage() {
   const { pairs, orphanThumbs } = pairImages(images)
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
+    <div className="min-h-screen">
+      <header className="bg-black/70 backdrop-blur border-b border-cyan-400/40">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <BackButton />
           <button
             onClick={handleDeleteEvent}
-            className="text-xs text-red-400 hover:text-red-600 whitespace-nowrap"
+            className="text-xs text-rose-400/70 hover:text-rose-300 whitespace-nowrap transition-colors"
           >
             イベント削除
           </button>
@@ -420,13 +485,13 @@ export default function EventDetailPage() {
       <main className="max-w-5xl mx-auto px-4 py-6 pb-28 space-y-6">
 
         {/* イベント情報 */}
-        <section className="bg-white rounded-xl border border-gray-200 p-4">
+        <section className="bg-zinc-950 rounded-2xl border border-cyan-400/20 shadow-[0_0_16px_rgba(34,211,238,0.08)] p-4">
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs text-gray-400 font-mono shrink-0">{event.event_code}</span>
+            <span className="text-xs text-lime-400/80 font-mono shrink-0">{event.event_code}</span>
             <input
               value={nameValue}
               onChange={(e) => setNameValue(e.target.value)}
-              className="flex-1 min-w-0 border border-gray-200 rounded-lg px-2 py-1 text-base font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400"
+              className="flex-1 min-w-0 bg-black border border-zinc-700 rounded-lg px-2 py-1 text-base font-bold text-zinc-100 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)]"
             />
             <div className="flex items-center gap-3 shrink-0">
               {(['01', '02'] as const).map((cid) => (
@@ -437,9 +502,9 @@ export default function EventDetailPage() {
                     value={cid}
                     checked={categoryId === cid}
                     onChange={() => setCategoryId(cid)}
-                    className="accent-blue-600"
+                    className="accent-cyan-400"
                   />
-                  <span className="text-sm text-gray-700">{CATEGORY_LABEL[cid]}</span>
+                  <span className="text-sm text-zinc-300">{CATEGORY_LABEL[cid]}</span>
                 </label>
               ))}
             </div>
@@ -447,13 +512,13 @@ export default function EventDetailPage() {
         </section>
 
         {/* 検索キーワード */}
-        <section className="bg-white rounded-xl border border-gray-200 p-5">
+        <section className="bg-zinc-950 rounded-2xl border border-cyan-400/20 shadow-[0_0_16px_rgba(34,211,238,0.08)] p-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700">検索キーワード</h2>
+            <h2 className="text-sm font-semibold text-zinc-300">検索キーワード</h2>
             <button
               onClick={generateKeywords}
               disabled={generatingKeywords}
-              className="text-xs px-2.5 py-1 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100 disabled:opacity-50"
+              className="text-xs px-2.5 py-1 bg-black text-teal-300 border border-teal-400/70 rounded-lg hover:bg-teal-400 hover:text-black hover:shadow-[0_0_10px_rgba(45,212,191,0.6)] disabled:opacity-50 transition-all"
             >
               {generatingKeywords ? '生成中…' : 'AI再生成'}
             </button>
@@ -463,43 +528,43 @@ export default function EventDetailPage() {
             onChange={(e) => setKeywords(e.target.value)}
             rows={3}
             placeholder="（未設定）"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 resize-none"
+            className="w-full bg-black border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)] resize-none"
           />
         </section>
 
         {/* メモ */}
-        <section className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">メモ</h2>
+        <section className="bg-zinc-950 rounded-2xl border border-cyan-400/20 shadow-[0_0_16px_rgba(34,211,238,0.08)] p-5">
+          <h2 className="text-sm font-semibold text-zinc-300 mb-3">メモ</h2>
           <textarea
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
             rows={5}
             placeholder="（未記入）"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 resize-none"
+            className="w-full bg-black border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)] resize-none"
           />
         </section>
 
         {/* 画像 */}
-        <section className="bg-white rounded-xl border border-gray-200 p-5">
+        <section className="bg-zinc-950 rounded-2xl border border-cyan-400/20 shadow-[0_0_16px_rgba(34,211,238,0.08)] p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-700">
+            <h2 className="text-sm font-semibold text-zinc-300">
               画像
-              {images.length > 0 && <span className="ml-2 text-gray-400 font-normal">{images.length}枚</span>}
+              {images.length > 0 && <span className="ml-2 text-cyan-300 font-bold">{images.length}枚</span>}
             </h2>
             <div className="flex items-center gap-2">
               <Link
                 href={`/upload?eventId=${id}&eventName=${encodeURIComponent(event.name)}`}
-                className="text-xs px-2.5 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                className="text-xs px-2.5 py-1.5 bg-black text-zinc-300 border border-zinc-600 rounded-lg hover:border-cyan-400 hover:text-cyan-300 transition-all"
               >
                 アップロード
               </Link>
               <button
                 onClick={showPicker ? () => { setShowPicker(false); setPickerSearch('') } : openPicker}
-                className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
+                className={
                   showPicker
-                    ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
+                    ? 'text-xs px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-600 hover:bg-zinc-700 transition-all'
+                    : 'text-xs px-3 py-1.5 rounded-lg bg-black text-cyan-300 border border-cyan-400/70 shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:bg-cyan-400 hover:text-black hover:shadow-[0_0_14px_rgba(34,211,238,0.8)] transition-all'
+                }
               >
                 {showPicker ? '閉じる' : '未設定画像から登録'}
               </button>
@@ -507,28 +572,29 @@ export default function EventDetailPage() {
           </div>
 
           {images.length === 0 ? (
-            <p className="text-sm text-gray-400 py-6 text-center">画像が登録されていません</p>
+            <p className="text-sm text-zinc-600 py-6 text-center">画像が登録されていません</p>
           ) : (
             <div className="space-y-6">
               {pairs.map(({ original, thumbnail }) => (
-                <div key={original.id} className="grid grid-cols-2 gap-4 pb-6 border-b border-gray-100 last:border-0 last:pb-0">
+                <div key={original.id} className="grid grid-cols-2 gap-4 pb-6 border-b border-zinc-800 last:border-0 last:pb-0">
                   <ImageThumb
                     img={original}
                     onDelete={handleDeleteImage}
                     onUnlink={handleUnlinkImage}
                     onCreated600x400={handleCreated600x400}
+                    onRenamed={handleRenamedImage}
                     hasThumbnail={!!thumbnail}
                   />
                   {thumbnail && (
-                    <ImageThumb img={thumbnail} onDelete={handleDeleteImage} onUnlink={handleUnlinkImage} isThumbnail />
+                    <ImageThumb img={thumbnail} onDelete={handleDeleteImage} onUnlink={handleUnlinkImage} onRenamed={handleRenamedImage} isThumbnail />
                   )}
                 </div>
               ))}
 
               {/* Orphan thumbnails (600×400 without matching original) */}
               {orphanThumbs.map((img) => (
-                <div key={img.id} className="grid grid-cols-2 gap-4 pb-6 border-b border-gray-100 last:border-0 last:pb-0">
-                  <ImageThumb img={img} onDelete={handleDeleteImage} onUnlink={handleUnlinkImage} isThumbnail />
+                <div key={img.id} className="grid grid-cols-2 gap-4 pb-6 border-b border-zinc-800 last:border-0 last:pb-0">
+                  <ImageThumb img={img} onDelete={handleDeleteImage} onUnlink={handleUnlinkImage} onRenamed={handleRenamedImage} isThumbnail />
                   <div />
                 </div>
               ))}
@@ -552,12 +618,12 @@ export default function EventDetailPage() {
               (i) => !pickerSearch || (i.file_name ?? '').toLowerCase().includes(pickerSearch.toLowerCase())
             )
             return (
-              <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="mt-6 pt-6 border-t border-zinc-800">
                 <div className="flex items-center gap-3 mb-3">
-                  <p className="text-xs font-semibold text-gray-600 shrink-0">
+                  <p className="text-xs font-semibold text-zinc-400 shrink-0">
                     未設定画像から選択
                     {!loadingUnlinked && (
-                      <span className="ml-2 text-gray-400 font-normal">{filtered.length} 件</span>
+                      <span className="ml-2 text-zinc-500 font-normal">{filtered.length} 件</span>
                     )}
                   </p>
                   {!loadingUnlinked && (
@@ -565,26 +631,26 @@ export default function EventDetailPage() {
                       value={pickerSearch}
                       onChange={(e) => setPickerSearch(e.target.value)}
                       placeholder="ファイル名で絞り込み…"
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 bg-black border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)]"
                     />
                   )}
                 </div>
                 {loadingUnlinked ? (
                   <div className="flex justify-center py-10">
-                    <div className="w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-6 h-6 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin shadow-[0_0_12px_rgba(34,211,238,0.6)]" />
                   </div>
                 ) : pickerImages.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-8">未設定の画像はありません</p>
+                  <p className="text-sm text-zinc-600 text-center py-8">未設定の画像はありません</p>
                 ) : (
                   <div className="grid grid-cols-3 gap-3">
                     {filtered.map((img) => (
                       <div key={img.id} className="space-y-1.5">
-                        <div className="w-full aspect-[3/2] bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                        <div className="w-full aspect-[3/2] bg-zinc-900 rounded-lg overflow-hidden border border-zinc-700">
                           {img.r2_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={img.r2_url} alt={img.file_name ?? ''} className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-300">
+                            <div className="w-full h-full flex items-center justify-center text-zinc-700">
                               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                                   d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
@@ -592,11 +658,11 @@ export default function EventDetailPage() {
                             </div>
                           )}
                         </div>
-                        <p className="text-xs text-gray-400 truncate">{img.file_name}</p>
+                        <p className="text-xs text-zinc-500 truncate">{img.file_name}</p>
                         <button
                           onClick={() => handleLinkUnlinkedImage(img)}
                           disabled={linkingImageId === img.id}
-                          className="w-full text-xs py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 disabled:opacity-50 transition-colors"
+                          className="w-full text-xs py-1.5 bg-black text-cyan-300 border border-cyan-400/70 rounded-lg hover:bg-cyan-400 hover:text-black hover:shadow-[0_0_10px_rgba(34,211,238,0.6)] disabled:opacity-50 transition-all"
                         >
                           {linkingImageId === img.id ? '登録中…' : '登録'}
                         </button>
@@ -612,21 +678,21 @@ export default function EventDetailPage() {
 
       {/* スティッキー保存バー */}
       {isDirty && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 shadow-2xl">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-black border-t border-cyan-400/60 shadow-[0_0_30px_rgba(34,211,238,0.3)]">
           <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-            <p className="text-sm text-amber-400 font-semibold">⚠ 未保存の変更があります</p>
+            <p className="text-sm text-amber-300 font-semibold">⚠ 未保存の変更があります</p>
             <div className="flex gap-3">
               <button
                 onClick={handleReset}
                 disabled={saving}
-                className="text-sm px-4 py-2 text-gray-400 hover:text-white disabled:opacity-40 transition-colors"
+                className="text-sm px-4 py-2 text-zinc-400 hover:text-white disabled:opacity-40 transition-colors"
               >
                 変更を破棄
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="text-sm px-8 py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-400 disabled:opacity-50 font-bold shadow-lg shadow-green-900/40 transition-colors"
+                className="text-sm px-8 py-2.5 bg-black text-cyan-300 border border-cyan-400 rounded-lg hover:bg-cyan-400 hover:text-black disabled:opacity-50 font-bold shadow-[0_0_18px_rgba(34,211,238,0.6)] hover:shadow-[0_0_28px_rgba(34,211,238,0.9)] transition-all"
               >
                 {saving ? '保存中…' : '保存する'}
               </button>

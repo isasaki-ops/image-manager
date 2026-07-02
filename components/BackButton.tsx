@@ -13,7 +13,7 @@ export default function BackButton({ fallback = '/' }: { fallback?: string }) {
           router.push(fallback)
         }
       }}
-      className="text-gray-500 hover:text-gray-700 text-sm"
+      className="text-zinc-500 hover:text-cyan-300 text-sm transition-colors"
     >
       ← 戻る
     </button>

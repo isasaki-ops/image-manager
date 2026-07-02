@@ -6,6 +6,7 @@ import { uploadToR2 } from '@/lib/r2'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { generateEmbedding, generateReadingsFromFileName } from '@/lib/ai'
 import { canResize, cropTo600x400 } from '@/lib/imageResize'
+import { buildOriginalFileName, buildThumbFileName } from '@/lib/imageNaming'
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/tiff', 'image/bmp']
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'tiff', 'tif', 'bmp']
@@ -67,13 +68,27 @@ export async function POST(req: NextRequest) {
 
     const r2Url = await uploadToR2(buffer, key, resolvedType || 'application/octet-stream')
 
+    // イベント選択済みの場合はイベント名ベースのファイル名を採番する
+    let eventName: string | null = null
+    const existingNames = new Set<string>()
+    if (eventId) {
+      const { data: eventRow } = await getSupabaseAdmin().from('events').select('name').eq('id', eventId).single()
+      eventName = eventRow?.name ?? null
+      if (eventName) {
+        const { data: existingRows } = await getSupabaseAdmin().from('images').select('file_name').eq('event_id', eventId)
+        for (const r of existingRows ?? []) if (r.file_name) existingNames.add(r.file_name)
+      }
+    }
+    const originalFileName = eventName ? buildOriginalFileName(eventName, extFromName, existingNames) : originalName
+    if (eventName) existingNames.add(originalFileName)
+
     const { data: image, error: insertError } = await getSupabaseAdmin()
       .from('images')
       .insert({
         r2_key: key,
         r2_url: r2Url,
         memo,
-        file_name: originalName,
+        file_name: originalFileName,
         file_size: file.size,
         file_type: resolvedType || null,
         image_width,
@@ -96,6 +111,7 @@ export async function POST(req: NextRequest) {
         const thumbKey = `${td}_${tt}_${tr}_600x400.jpg`
         const thumbUrl = await uploadToR2(thumbBuffer, thumbKey, 'image/jpeg')
         const baseName = originalName.replace(/\.[^.]+$/, '')
+        const thumbFileName = eventName ? buildThumbFileName(eventName, existingNames) : `${baseName}_600x400.jpg`
 
         const { data: thumb } = await getSupabaseAdmin()
           .from('images')
@@ -103,7 +119,7 @@ export async function POST(req: NextRequest) {
             r2_key: thumbKey,
             r2_url: thumbUrl,
             memo,
-            file_name: `${baseName}_600x400.jpg`,
+            file_name: thumbFileName,
             file_size: thumbBuffer.length,
             file_type: 'image/jpeg',
             image_width: 600,

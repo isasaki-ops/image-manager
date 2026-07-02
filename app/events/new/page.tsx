@@ -44,20 +44,20 @@ export default function NewEventPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
+    <div className="min-h-screen">
+      <header className="bg-black/70 backdrop-blur border-b border-cyan-400/40">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <BackButton />
-          <h1 className="text-lg font-bold text-gray-800">イベント登録</h1>
+          <h1 className="text-lg font-bold text-white [text-shadow:0_0_6px_#22d3ee,0_0_16px_rgba(34,211,238,0.5)]">イベント登録</h1>
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8">
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="bg-zinc-950 rounded-2xl border border-cyan-400/20 shadow-[0_0_20px_rgba(34,211,238,0.08)] p-6 space-y-5">
 
           {/* カテゴリ */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">カテゴリ</label>
+            <label className="block text-sm font-medium text-zinc-400 mb-2">カテゴリ</label>
             <div className="flex gap-4">
               {([['01', '取材'], ['02', '来店']] as const).map(([val, label]) => (
                 <label key={val} className="flex items-center gap-2 cursor-pointer">
@@ -67,9 +67,9 @@ export default function NewEventPage() {
                     value={val}
                     checked={categoryId === val}
                     onChange={() => setCategoryId(val)}
-                    className="accent-blue-600"
+                    className="accent-cyan-400"
                   />
-                  <span className="text-sm text-gray-700">{label}</span>
+                  <span className="text-sm text-zinc-200">{label}</span>
                 </label>
               ))}
             </div>
@@ -77,52 +77,52 @@ export default function NewEventPage() {
 
           {/* イベント名 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              イベント名 <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-zinc-400 mb-1">
+              イベント名 <span className="text-fuchsia-400">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例：天下無双、バズーカ、梅屋シン来店"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-black border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)]"
               required
             />
           </div>
 
           {/* 検索キーワード */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-400 mb-1">
               検索キーワード
-              <span className="text-xs text-gray-400 ml-2">（検索文字をスペースで区切って入れてください。空欄の場合はAIが自動生成します）</span>
+              <span className="text-xs text-zinc-600 ml-2">（検索文字をスペースで区切って入れてください。空欄の場合はAIが自動生成します）</span>
             </label>
             <textarea
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
               rows={3}
               placeholder="てんかむそう てんか むそう…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full bg-black border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)] resize-none"
             />
           </div>
 
           {/* メモ */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">メモ</label>
+            <label className="block text-sm font-medium text-zinc-400 mb-1">メモ</label>
             <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
               rows={4}
               placeholder="自由記入"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full bg-black border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)] resize-none"
             />
           </div>
 
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p className="text-rose-400 text-sm">{error}</p>}
 
           <button
             type="submit"
             disabled={!name.trim() || isSubmitting}
-            className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-2.5 bg-black text-cyan-300 border border-cyan-400 rounded-lg font-bold shadow-[0_0_16px_rgba(34,211,238,0.5)] hover:bg-cyan-400 hover:text-black hover:shadow-[0_0_26px_rgba(34,211,238,0.85)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-black disabled:hover:text-cyan-300 transition-all"
           >
             {isSubmitting ? '登録中（AIキーワード生成中…）' : '登録する'}
           </button>

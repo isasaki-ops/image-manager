@@ -5,6 +5,17 @@ const WP_API = process.env.WP_URL
   ? `${process.env.WP_URL.replace(/\/$/, '')}/wp-json/wp/v2/media`
   : 'https://hisshobon-hall.info/wp-json/wp/v2/media'
 
+// 取材(01)＝image01_ / 来店(02)＝image02_ / 取材かつイベント名がSS・ｓｓ・ss始まり＝imagess_
+function resolveFileNamePrefix(categoryId: string | null | undefined, eventName: string | null | undefined): string {
+  if (categoryId === '02') return 'image02_'
+  if (categoryId === '01') {
+    const normalized = (eventName ?? '').normalize('NFKC').trim()
+    if (/^ss/i.test(normalized)) return 'imagess_'
+    return 'image01_'
+  }
+  return 'image_'
+}
+
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -21,10 +32,10 @@ export async function POST(
       )
     }
 
-    // 画像レコードを取得
+    // 画像レコードを取得（紐づくイベントのカテゴリ・名前も合わせて取得）
     const { data: img, error } = await getSupabaseAdmin()
       .from('images')
-      .select('id, r2_url, file_name, file_type')
+      .select('id, r2_url, file_name, file_type, events(category_id, name)')
       .eq('id', id)
       .single()
 
@@ -40,19 +51,26 @@ export async function POST(
     const imageBuffer = await r2Res.arrayBuffer()
     const contentType = img.file_type ?? r2Res.headers.get('content-type') ?? 'image/jpeg'
 
-    // ファイル名（WPにそのまま送る）
-    const fileName = img.file_name ?? `image_${id}.jpg`
+    // ファイル名（カテゴリ・イベント名に応じたプレフィックスを付けてWPに送る）
+    const event = Array.isArray(img.events) ? img.events[0] : img.events
+    const prefix = resolveFileNamePrefix(event?.category_id, event?.name)
+    const baseFileName = img.file_name ?? `${id}.jpg`
+    const fileName = `${prefix}${baseFileName}`
 
     // WPにアップロード
+    // 生バイナリ+Content-Dispositionヘッダー方式だと、WordPress側がRFC 5987の
+    // filename*=UTF-8''... を解釈せず日本語ファイル名が文字化けするため、
+    // multipart/form-data で送りファイル名はマルチパート本文内にUTF-8のまま埋め込む。
     const auth = Buffer.from(`${wpUser}:${wpPass}`).toString('base64')
+    const uploadForm = new FormData()
+    uploadForm.append('file', new Blob([imageBuffer], { type: contentType }), fileName)
+
     const wpRes = await fetch(WP_API, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${auth}`,
-        'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
       },
-      body: imageBuffer,
+      body: uploadForm,
     })
 
     if (!wpRes.ok) {

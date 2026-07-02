@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '100mb',
     },
+    workerThreads: true,
   },
 };
 
