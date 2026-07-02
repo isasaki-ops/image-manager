@@ -26,7 +26,7 @@ export default function SearchBox({ onSearch, isLoading, initialValue = '' }: Se
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="例：取材名、キャラクター名、ライター名など"
-        className="flex-1 px-4 py-2 rounded-lg border border-fuchsia-500/60 bg-black text-sm text-zinc-100 placeholder-zinc-500 shadow-[0_0_10px_rgba(217,70,239,0.15)_inset] focus:outline-none focus:border-fuchsia-400 focus:shadow-[0_0_14px_rgba(217,70,239,0.4)_inset]"
+        className="flex-1 px-4 py-2 rounded-lg border border-fuchsia-500/60 bg-zinc-900 text-sm text-zinc-100 placeholder-zinc-400 shadow-[0_0_10px_rgba(217,70,239,0.15)_inset] focus:outline-none focus:border-fuchsia-400 focus:shadow-[0_0_14px_rgba(217,70,239,0.4)_inset]"
       />
       <button
         type="submit"

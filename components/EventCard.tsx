@@ -8,11 +8,19 @@ const CATEGORY_COLOR: Record<string, string> = {
   '01': 'bg-black text-cyan-300 border border-cyan-400/70 shadow-[0_0_6px_rgba(34,211,238,0.5)]',
   '02': 'bg-black text-fuchsia-300 border border-fuchsia-400/70 shadow-[0_0_6px_rgba(217,70,239,0.5)]',
 }
+const CATEGORY_CODE_COLOR: Record<string, string> = {
+  '01': 'text-cyan-300',
+  '02': 'text-fuchsia-300',
+}
+const CATEGORY_CARD_BORDER: Record<string, string> = {
+  '01': 'border-cyan-400/50 shadow-[0_0_14px_rgba(34,211,238,0.18)] hover:shadow-[0_0_26px_rgba(34,211,238,0.45)] hover:border-cyan-400',
+  '02': 'border-fuchsia-400/50 shadow-[0_0_14px_rgba(217,70,239,0.18)] hover:shadow-[0_0_26px_rgba(217,70,239,0.45)] hover:border-fuchsia-400',
+}
 
 export default function EventCard({ event }: { event: EventWithStats }) {
   return (
     <Link href={`/events/${event.id}`} className="block group">
-      <div className="bg-zinc-950 rounded-2xl border border-cyan-400/20 overflow-hidden shadow-[0_0_16px_rgba(34,211,238,0.08)] hover:shadow-[0_0_24px_rgba(34,211,238,0.35)] hover:-translate-y-0.5 hover:border-cyan-400/60 transition-all duration-200">
+      <div className={`bg-zinc-950 rounded-2xl border overflow-hidden hover:-translate-y-0.5 transition-all duration-200 ${CATEGORY_CARD_BORDER[event.category_id] ?? 'border-zinc-700 shadow-none hover:border-zinc-500'}`}>
         {/* Preview image */}
         <div className="w-full h-36 bg-zinc-900 overflow-hidden flex items-center justify-center">
           {event.preview_url ? (
@@ -36,7 +44,7 @@ export default function EventCard({ event }: { event: EventWithStats }) {
         {/* Info */}
         <div className="p-3 space-y-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-lime-400/80 font-mono">{event.event_code}</span>
+            <span className={`text-xs font-mono ${CATEGORY_CODE_COLOR[event.category_id] ?? 'text-zinc-400'}`}>{event.event_code}</span>
             <div className="flex items-center gap-1.5">
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLOR[event.category_id] ?? 'bg-zinc-800 text-zinc-400'}`}>
                 {CATEGORY_LABEL[event.category_id] ?? event.category_id}

@@ -10,6 +10,10 @@ const CATEGORY_COLOR: Record<string, string> = {
   '01': 'bg-black text-cyan-300 border border-cyan-400/70',
   '02': 'bg-black text-fuchsia-300 border border-fuchsia-400/70',
 }
+const CATEGORY_CODE_COLOR: Record<string, string> = {
+  '01': 'text-cyan-300',
+  '02': 'text-fuchsia-300',
+}
 const SEARCH_THRESHOLD = 0.55
 
 
@@ -33,7 +37,7 @@ function ImageCard({ img, onDelete }: { img: ImageRecord; onDelete?: (id: string
 
   return (
     <div className="space-y-1">
-      <p className="text-xs font-semibold text-zinc-500">{sizeLabel}</p>
+      <p className="inline-block text-xs font-bold text-cyan-300 bg-cyan-400/10 border border-cyan-400/30 rounded px-1.5 py-0.5">{sizeLabel}</p>
       <div className="relative w-full aspect-[3/2] bg-zinc-900 rounded-lg overflow-hidden border border-zinc-700">
         {img.r2_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -47,7 +51,7 @@ function ImageCard({ img, onDelete }: { img: ImageRecord; onDelete?: (id: string
           </div>
         )}
       </div>
-      <p className="text-xs text-zinc-500 truncate">{img.file_name}</p>
+      <p className="text-xs font-medium text-zinc-200 truncate">{img.file_name}</p>
       {onDelete && (
         <button
           onClick={handleDelete}
@@ -170,15 +174,15 @@ function EventPicker({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="イベント名で検索…"
-        className="w-full bg-black border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)]"
+        className="w-full bg-zinc-900 border border-zinc-600 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)]"
       />
 
       {/* Results */}
       {query.trim() && (
         searching ? (
-          <p className="text-xs text-zinc-500 text-center py-4">検索中…</p>
+          <p className="text-xs text-zinc-400 text-center py-4">検索中…</p>
         ) : events.length === 0 ? (
-          <p className="text-xs text-zinc-500 text-center py-4">一致するイベントがありません</p>
+          <p className="text-xs text-zinc-400 text-center py-4">一致するイベントがありません</p>
         ) : (
           <div className="max-h-56 overflow-y-auto border border-zinc-800 rounded-lg divide-y divide-zinc-800">
             {events.map((e) => (
@@ -188,7 +192,7 @@ function EventPicker({
                 disabled={linking}
                 className="w-full text-left px-3 py-2 bg-black hover:bg-zinc-900 disabled:opacity-50 transition-colors flex items-center gap-2"
               >
-                <span className="text-xs font-mono text-lime-400/80 shrink-0">{e.event_code}</span>
+                <span className={`text-xs font-mono shrink-0 ${CATEGORY_CODE_COLOR[e.category_id] ?? 'text-zinc-400'}`}>{e.event_code}</span>
                 <span className="text-xs text-zinc-200 flex-1 truncate">{e.name}</span>
                 <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${CATEGORY_COLOR[e.category_id] ?? 'bg-zinc-800 text-zinc-400'}`}>
                   {CATEGORY_LABEL[e.category_id] ?? e.category_id}
@@ -199,7 +203,7 @@ function EventPicker({
         )
       )}
 
-      <button onClick={handleClose} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+      <button onClick={handleClose} className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors">
         キャンセル
       </button>
     </div>
@@ -241,7 +245,7 @@ export default function UnlinkedPage() {
           <BackButton />
           <h1 className="text-base font-bold text-white [text-shadow:0_0_6px_#a3e635,0_0_16px_rgba(163,230,53,0.5)]">イベント未設定画像</h1>
           {!isLoading && (
-            <span className="text-sm text-zinc-500">{totalCount} 枚</span>
+            <span className="text-sm text-lime-300 font-bold">{totalCount} 枚</span>
           )}
         </div>
       </header>
@@ -253,12 +257,12 @@ export default function UnlinkedPage() {
           </div>
         ) : totalCount === 0 ? (
           <div className="text-center py-20">
-            <p className="text-zinc-600">未設定の画像はありません</p>
+            <p className="text-zinc-400">未設定の画像はありません</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
             {images.map((img) => (
-              <div key={img.id} className="bg-zinc-950 rounded-2xl border border-lime-400/20 shadow-[0_0_16px_rgba(163,230,53,0.08)] p-4 space-y-3">
+              <div key={img.id} className="bg-zinc-950 rounded-2xl border border-lime-400/50 shadow-[0_0_16px_rgba(163,230,53,0.08)] p-4 space-y-3">
                 <ImageCard img={img} onDelete={handleDeleted} />
                 <EventPicker imageId={img.id} pairedImageId={null} onLinked={handleLinked} />
               </div>

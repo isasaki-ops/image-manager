@@ -13,7 +13,7 @@ export default function UploadPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-10">
-        <Suspense fallback={<div className="text-center text-zinc-500 py-10">読み込み中...</div>}>
+        <Suspense fallback={<div className="text-center text-zinc-400 py-10">読み込み中...</div>}>
           <UploadForm />
         </Suspense>
       </main>

@@ -53,11 +53,11 @@ export default function NewEventPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8">
-        <form onSubmit={handleSubmit} className="bg-zinc-950 rounded-2xl border border-cyan-400/20 shadow-[0_0_20px_rgba(34,211,238,0.08)] p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="bg-zinc-950 rounded-2xl border border-cyan-400/50 shadow-[0_0_20px_rgba(34,211,238,0.08)] p-6 space-y-5">
 
           {/* カテゴリ */}
           <div>
-            <label className="block text-sm font-medium text-zinc-400 mb-2">カテゴリ</label>
+            <label className="block text-sm font-medium text-zinc-300 mb-2">カテゴリ</label>
             <div className="flex gap-4">
               {([['01', '取材'], ['02', '来店']] as const).map(([val, label]) => (
                 <label key={val} className="flex items-center gap-2 cursor-pointer">
@@ -77,7 +77,7 @@ export default function NewEventPage() {
 
           {/* イベント名 */}
           <div>
-            <label className="block text-sm font-medium text-zinc-400 mb-1">
+            <label className="block text-sm font-medium text-zinc-300 mb-1">
               イベント名 <span className="text-fuchsia-400">*</span>
             </label>
             <input
@@ -85,35 +85,35 @@ export default function NewEventPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例：天下無双、バズーカ、梅屋シン来店"
-              className="w-full bg-black border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)]"
+              className="w-full bg-zinc-900 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)]"
               required
             />
           </div>
 
           {/* 検索キーワード */}
           <div>
-            <label className="block text-sm font-medium text-zinc-400 mb-1">
+            <label className="block text-sm font-medium text-zinc-300 mb-1">
               検索キーワード
-              <span className="text-xs text-zinc-600 ml-2">（検索文字をスペースで区切って入れてください。空欄の場合はAIが自動生成します）</span>
+              <span className="text-xs text-zinc-500 ml-2">（検索文字をスペースで区切って入れてください。空欄の場合はAIが自動生成します）</span>
             </label>
             <textarea
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
               rows={3}
               placeholder="てんかむそう てんか むそう…"
-              className="w-full bg-black border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)] resize-none"
+              className="w-full bg-zinc-900 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)] resize-none"
             />
           </div>
 
           {/* メモ */}
           <div>
-            <label className="block text-sm font-medium text-zinc-400 mb-1">メモ</label>
+            <label className="block text-sm font-medium text-zinc-300 mb-1">メモ</label>
             <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
               rows={4}
               placeholder="自由記入"
-              className="w-full bg-black border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)] resize-none"
+              className="w-full bg-zinc-900 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)] resize-none"
             />
           </div>
 

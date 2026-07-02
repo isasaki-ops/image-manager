@@ -11,6 +11,14 @@ const CATEGORY_COLOR: Record<string, string> = {
   '01': 'bg-black text-cyan-300 border border-cyan-400/70',
   '02': 'bg-black text-fuchsia-300 border border-fuchsia-400/70',
 }
+const CATEGORY_CODE_COLOR: Record<string, string> = {
+  '01': 'text-cyan-300',
+  '02': 'text-fuchsia-300',
+}
+const CATEGORY_SECTION_BORDER: Record<string, string> = {
+  '01': 'border-cyan-400/50 shadow-[0_0_16px_rgba(34,211,238,0.08)]',
+  '02': 'border-fuchsia-400/50 shadow-[0_0_16px_rgba(217,70,239,0.08)]',
+}
 
 interface ImagePair {
   original: ImageRecord
@@ -485,13 +493,13 @@ export default function EventDetailPage() {
       <main className="max-w-5xl mx-auto px-4 py-6 pb-28 space-y-6">
 
         {/* イベント情報 */}
-        <section className="bg-zinc-950 rounded-2xl border border-cyan-400/20 shadow-[0_0_16px_rgba(34,211,238,0.08)] p-4">
+        <section className={`bg-zinc-950 rounded-2xl border p-4 transition-colors ${CATEGORY_SECTION_BORDER[categoryId] ?? 'border-zinc-700'}`}>
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs text-lime-400/80 font-mono shrink-0">{event.event_code}</span>
+            <span className={`text-xs font-mono shrink-0 ${CATEGORY_CODE_COLOR[categoryId] ?? 'text-zinc-400'}`}>{event.event_code}</span>
             <input
               value={nameValue}
               onChange={(e) => setNameValue(e.target.value)}
-              className="flex-1 min-w-0 bg-black border border-zinc-700 rounded-lg px-2 py-1 text-base font-bold text-zinc-100 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)]"
+              className="flex-1 min-w-0 bg-zinc-900 border border-zinc-600 rounded-lg px-2 py-1 text-base font-bold text-zinc-100 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)]"
             />
             <div className="flex items-center gap-3 shrink-0">
               {(['01', '02'] as const).map((cid) => (
@@ -512,7 +520,7 @@ export default function EventDetailPage() {
         </section>
 
         {/* 検索キーワード */}
-        <section className="bg-zinc-950 rounded-2xl border border-cyan-400/20 shadow-[0_0_16px_rgba(34,211,238,0.08)] p-5">
+        <section className="bg-zinc-950 rounded-2xl border border-cyan-400/50 shadow-[0_0_16px_rgba(34,211,238,0.08)] p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-zinc-300">検索キーワード</h2>
             <button
@@ -528,24 +536,24 @@ export default function EventDetailPage() {
             onChange={(e) => setKeywords(e.target.value)}
             rows={3}
             placeholder="（未設定）"
-            className="w-full bg-black border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)] resize-none"
+            className="w-full bg-zinc-900 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)] resize-none"
           />
         </section>
 
         {/* メモ */}
-        <section className="bg-zinc-950 rounded-2xl border border-cyan-400/20 shadow-[0_0_16px_rgba(34,211,238,0.08)] p-5">
+        <section className="bg-zinc-950 rounded-2xl border border-cyan-400/50 shadow-[0_0_16px_rgba(34,211,238,0.08)] p-5">
           <h2 className="text-sm font-semibold text-zinc-300 mb-3">メモ</h2>
           <textarea
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
             rows={5}
             placeholder="（未記入）"
-            className="w-full bg-black border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)] resize-none"
+            className="w-full bg-zinc-900 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)] resize-none"
           />
         </section>
 
         {/* 画像 */}
-        <section className="bg-zinc-950 rounded-2xl border border-cyan-400/20 shadow-[0_0_16px_rgba(34,211,238,0.08)] p-5">
+        <section className="bg-zinc-950 rounded-2xl border border-cyan-400/50 shadow-[0_0_16px_rgba(34,211,238,0.08)] p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-zinc-300">
               画像
@@ -631,7 +639,7 @@ export default function EventDetailPage() {
                       value={pickerSearch}
                       onChange={(e) => setPickerSearch(e.target.value)}
                       placeholder="ファイル名で絞り込み…"
-                      className="flex-1 bg-black border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)]"
+                      className="flex-1 bg-zinc-900 border border-zinc-600 rounded-lg px-3 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)]"
                     />
                   )}
                 </div>

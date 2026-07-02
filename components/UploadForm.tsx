@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { RESIZABLE_MIME_TYPES, RESIZABLE_EXTENSIONS } from '@/lib/imageTypes'
 
 interface UploadResult {
   id: string
@@ -17,10 +16,9 @@ interface EventOption {
 }
 
 const CATEGORY_LABEL: Record<string, string> = { '01': '取材', '02': '来店' }
-
-function fileCanResize(file: File): boolean {
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
-  return RESIZABLE_MIME_TYPES.has(file.type) || RESIZABLE_EXTENSIONS.has(ext)
+const CATEGORY_CODE_COLOR: Record<string, string> = {
+  '01': 'text-cyan-300',
+  '02': 'text-fuchsia-300',
 }
 
 export default function UploadForm() {
@@ -30,7 +28,6 @@ export default function UploadForm() {
 
   const [isDragging, setIsDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
-  const [createThumbnail, setCreateThumbnail] = useState(false)
   const [progress, setProgress] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [result, setResult] = useState<UploadResult | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
@@ -53,7 +50,6 @@ export default function UploadForm() {
     }
     setFile(f)
     setErrorMsg('')
-    if (!fileCanResize(f)) setCreateThumbnail(false)
   }
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -122,7 +118,6 @@ export default function UploadForm() {
 
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('create_thumbnail', String(createThumbnail))
     if (selectedEventId) formData.append('event_id', selectedEventId)
 
     try {
@@ -132,14 +127,11 @@ export default function UploadForm() {
       setResult(data)
       setProgress('success')
       setFile(null)
-      setCreateThumbnail(false)
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'アップロードに失敗しました')
       setProgress('error')
     }
   }
-
-  const resizable = file ? fileCanResize(file) : false
 
   return (
     <div className="max-w-lg mx-auto space-y-4">
@@ -147,7 +139,7 @@ export default function UploadForm() {
 
         {/* イベント選択 */}
         <div ref={dropdownRef} className="relative">
-          <label className="block text-sm font-medium text-zinc-400 mb-1">イベント</label>
+          <label className="block text-sm font-medium text-zinc-300 mb-1">イベント</label>
           {selectedEventId ? (
             <div className="flex items-center gap-2 border border-fuchsia-400/70 bg-black shadow-[0_0_10px_rgba(217,70,239,0.25)] rounded-lg px-3 py-2">
               <span className="flex-1 text-sm text-fuchsia-300 font-medium">{selectedEventName}</span>
@@ -158,14 +150,14 @@ export default function UploadForm() {
           ) : (
             <>
               <div
-                className="flex items-center gap-2 border border-zinc-700 rounded-lg px-3 py-2 cursor-text bg-black focus-within:border-fuchsia-400 focus-within:shadow-[0_0_10px_rgba(217,70,239,0.35)]"
+                className="flex items-center gap-2 border border-zinc-600 rounded-lg px-3 py-2 cursor-text bg-zinc-900 focus-within:border-fuchsia-400 focus-within:shadow-[0_0_10px_rgba(217,70,239,0.35)]"
               >
                 <input
                   type="text"
                   value={eventSearch}
                   onChange={(e) => setEventSearch(e.target.value)}
                   placeholder="イベントを検索（空欄でイベント未設定）"
-                  className="flex-1 text-sm text-zinc-100 outline-none bg-transparent placeholder-zinc-600"
+                  className="flex-1 text-sm text-zinc-100 outline-none bg-transparent placeholder-zinc-400"
                 />
                 {searchingEvents && (
                   <div className="w-3 h-3 border-2 border-fuchsia-400 border-t-transparent rounded-full animate-spin" />
@@ -176,7 +168,7 @@ export default function UploadForm() {
                   <button
                     type="button"
                     onClick={clearEvent}
-                    className="w-full text-left px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-900 border-b border-zinc-800"
+                    className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-900 border-b border-zinc-800"
                   >
                     イベント未設定
                   </button>
@@ -188,14 +180,14 @@ export default function UploadForm() {
                       className="w-full text-left px-4 py-2.5 hover:bg-zinc-900 transition-colors"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-lime-400/80 font-mono">{e.event_code}</span>
-                        <span className="text-xs text-zinc-500">{CATEGORY_LABEL[e.category_id]}</span>
+                        <span className={`text-xs font-mono ${CATEGORY_CODE_COLOR[e.category_id] ?? 'text-zinc-400'}`}>{e.event_code}</span>
+                        <span className="text-xs text-zinc-400">{CATEGORY_LABEL[e.category_id]}</span>
                       </div>
-                      <p className="text-sm font-medium text-zinc-200">{e.name}</p>
+                      <p className="text-sm font-medium text-zinc-100">{e.name}</p>
                     </button>
                   ))}
                   {eventOptions.length === 0 && !searchingEvents && (
-                    <p className="px-4 py-3 text-sm text-zinc-500">見つかりません</p>
+                    <p className="px-4 py-3 text-sm text-zinc-400">見つかりません</p>
                   )}
                 </div>
               )}
@@ -214,7 +206,7 @@ export default function UploadForm() {
               ? 'border-cyan-400 bg-cyan-400/5 shadow-[0_0_20px_rgba(34,211,238,0.25)]'
               : file
               ? 'border-emerald-400 bg-emerald-400/5 shadow-[0_0_20px_rgba(52,211,153,0.2)]'
-              : 'border-zinc-700 hover:border-cyan-400/60'
+              : 'border-zinc-600 hover:border-cyan-400/60'
           }`}
         >
           <input
@@ -229,30 +221,13 @@ export default function UploadForm() {
               <p className="text-sm text-emerald-400/70">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
             </div>
           ) : (
-            <div className="text-zinc-500">
+            <div className="text-zinc-300">
               <p className="text-base">ここにドラッグ&ドロップ</p>
-              <p className="text-sm mt-1">または クリックしてファイルを選択</p>
-              <p className="text-xs mt-2 text-zinc-600">すべてのファイル形式対応（PSD含む）· 最大100MB</p>
+              <p className="text-sm mt-1 text-zinc-400">または クリックしてファイルを選択</p>
+              <p className="text-xs mt-2 text-zinc-500">すべてのファイル形式対応（PSD含む）· 最大100MB</p>
             </div>
           )}
         </div>
-
-        {/* Thumbnail checkbox */}
-        <label className={`flex items-center gap-3 select-none ${resizable ? 'cursor-pointer' : 'cursor-not-allowed opacity-40'}`}>
-          <input
-            type="checkbox"
-            checked={createThumbnail}
-            disabled={!resizable}
-            onChange={(e) => setCreateThumbnail(e.target.checked)}
-            className="w-4 h-4 accent-fuchsia-400"
-          />
-          <span className="text-sm text-zinc-300">
-            600×400で複製
-            {file && !resizable && (
-              <span className="ml-2 text-xs text-zinc-600">（このファイル形式は非対応）</span>
-            )}
-          </span>
-        </label>
 
         {errorMsg && <p className="text-rose-400 text-sm">{errorMsg}</p>}
 
