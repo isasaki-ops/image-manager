@@ -12,6 +12,7 @@ export default function NewEventPage() {
   const [keywords, setKeywords] = useState('')
   const [memo, setMemo] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDone, setIsDone] = useState(false)
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,7 +37,8 @@ export default function NewEventPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to create event')
 
-      router.push(`/events/${data.id}`)
+      setIsDone(true)
+      setTimeout(() => router.push('/'), 1500)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました')
       setIsSubmitting(false)
@@ -119,12 +121,18 @@ export default function NewEventPage() {
 
           {error && <p className="text-rose-400 text-sm">{error}</p>}
 
+          {isDone && (
+            <p className="text-emerald-300 text-sm font-medium text-center">
+              登録が完了しました。TOPに戻ります…
+            </p>
+          )}
+
           <button
             type="submit"
-            disabled={!name.trim() || isSubmitting}
+            disabled={!name.trim() || isSubmitting || isDone}
             className="w-full py-2.5 bg-black text-cyan-300 border border-cyan-400 rounded-lg font-bold shadow-[0_0_16px_rgba(34,211,238,0.5)] hover:bg-cyan-400 hover:text-black hover:shadow-[0_0_26px_rgba(34,211,238,0.85)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-black disabled:hover:text-cyan-300 transition-all"
           >
-            {isSubmitting ? '登録中（AIキーワード生成中…）' : '登録する'}
+            {isDone ? '完了' : isSubmitting ? '登録中（AIキーワード生成中…）' : '登録する'}
           </button>
         </form>
       </main>
