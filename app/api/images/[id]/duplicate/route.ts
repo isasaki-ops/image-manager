@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase'
 import { uploadToR2 } from '@/lib/r2'
 import { cropTo600x400 } from '@/lib/imageResize'
 import { generateEmbedding } from '@/lib/ai'
+import { getNextSortOrder } from '@/lib/imageOrder'
 
 export async function POST(
   _req: NextRequest,
@@ -44,6 +45,8 @@ export async function POST(
       embedding = await generateEmbedding(searchText)
     }
 
+    const nextSortOrder = await getNextSortOrder(image.event_id ?? null)
+
     const insertData: Record<string, unknown> = {
       r2_key: thumbKey,
       r2_url: thumbUrl,
@@ -55,6 +58,7 @@ export async function POST(
       image_height: 400,
       image_type: '600x400',
       event_id: image.event_id ?? null,
+      sort_order: nextSortOrder,
       ai_description,
     }
     if (embedding) {

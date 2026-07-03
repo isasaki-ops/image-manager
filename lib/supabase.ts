@@ -94,4 +94,5 @@ export type ImageRecord = {
   file_type: string | null
   image_width: number | null
   image_height: number | null
+  sort_order?: number | null
 }

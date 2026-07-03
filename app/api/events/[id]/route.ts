@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { generateEmbedding, generateKeywordsFromEventName } from '@/lib/ai'
+import { applyImageOrder } from '@/lib/imageOrder'
 
 export async function GET(
   _req: NextRequest,
@@ -15,11 +16,12 @@ export async function GET(
         .select('id, event_code, category_id, name, keywords, memo, created_at, updated_at')
         .eq('id', id)
         .single(),
-      getSupabaseAdmin()
-        .from('images')
-        .select('id, event_id, image_type, r2_url, r2_key, file_name, file_size, file_type, image_width, image_height, uploaded_at')
-        .eq('event_id', id)
-        .order('uploaded_at', { ascending: true }),
+      applyImageOrder(
+        getSupabaseAdmin()
+          .from('images')
+          .select('id, event_id, image_type, r2_url, r2_key, file_name, file_size, file_type, image_width, image_height, uploaded_at, sort_order')
+          .eq('event_id', id)
+      ),
     ])
 
     if (error || !event) {

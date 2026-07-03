@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase'
 import { deleteFromR2 } from '@/lib/r2'
 import { generateEmbedding } from '@/lib/ai'
 import { renameImageForEvent } from '@/lib/imageNaming'
+import { getNextSortOrder } from '@/lib/imageOrder'
 
 export async function GET(
   _req: NextRequest,
@@ -46,7 +47,9 @@ export async function PATCH(
 
       if (!img) return NextResponse.json({ error: 'Image not found' }, { status: 404 })
 
-      await getSupabaseAdmin().from('images').update({ event_id }).eq('id', id)
+      // 紐付け時は末尾に追加、解除時は並び順をリセット（別イベントへの再紐付け時に古い値が残らないように）
+      const sortOrder = event_id ? await getNextSortOrder(event_id) : null
+      await getSupabaseAdmin().from('images').update({ event_id, sort_order: sortOrder }).eq('id', id)
 
       // Sync event_id to paired image (original↔600×400) if pair is also unlinked
       const fileName = img.file_name ?? ''
@@ -68,7 +71,8 @@ export async function PATCH(
           .maybeSingle()
 
         if (pair) {
-          await getSupabaseAdmin().from('images').update({ event_id }).eq('id', pair.id)
+          const pairSortOrder = event_id ? await getNextSortOrder(event_id) : null
+          await getSupabaseAdmin().from('images').update({ event_id, sort_order: pairSortOrder }).eq('id', pair.id)
           pairId = pair.id
         }
       }

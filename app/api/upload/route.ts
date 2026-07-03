@@ -7,6 +7,7 @@ import { getSupabaseAdmin } from '@/lib/supabase'
 import { generateEmbedding, generateReadingsFromFileName } from '@/lib/ai'
 import { canResize, cropTo600x400 } from '@/lib/imageResize'
 import { buildOriginalFileName, buildThumbFileName } from '@/lib/imageNaming'
+import { getNextSortOrder } from '@/lib/imageOrder'
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/tiff', 'image/bmp']
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'tiff', 'tif', 'bmp']
@@ -82,6 +83,8 @@ export async function POST(req: NextRequest) {
     const originalFileName = eventName ? buildOriginalFileName(eventName, extFromName, existingNames) : originalName
     if (eventName) existingNames.add(originalFileName)
 
+    const nextSortOrder = await getNextSortOrder(eventId)
+
     const { data: image, error: insertError } = await getSupabaseAdmin()
       .from('images')
       .insert({
@@ -95,6 +98,7 @@ export async function POST(req: NextRequest) {
         image_height,
         event_id: eventId,
         image_type: 'original',
+        sort_order: nextSortOrder,
       })
       .select('id, r2_url')
       .single()
@@ -126,6 +130,7 @@ export async function POST(req: NextRequest) {
             image_height: 400,
             event_id: eventId,
             image_type: '600x400',
+            sort_order: nextSortOrder + 1,
           })
           .select('id')
           .single()

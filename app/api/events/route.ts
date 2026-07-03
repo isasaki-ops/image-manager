@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { generateKeywordsFromEventName, generateEmbedding } from '@/lib/ai'
 import { searchEvents } from '@/lib/search'
+import { applyImageOrder } from '@/lib/imageOrder'
 
 const PAGE_SIZE = 40
 
@@ -38,11 +39,12 @@ export async function GET(req: NextRequest) {
 
     // Fetch image stats for all returned events
     const eventIds = events.map((e) => e.id)
-    const { data: imageData } = await getSupabaseAdmin()
-      .from('images')
-      .select('event_id, r2_url, image_type, uploaded_at')
-      .in('event_id', eventIds)
-      .order('uploaded_at', { ascending: true })
+    const { data: imageData } = await applyImageOrder(
+      getSupabaseAdmin()
+        .from('images')
+        .select('event_id, r2_url, image_type, uploaded_at, sort_order')
+        .in('event_id', eventIds)
+    )
 
     const imagesByEvent: Record<string, typeof imageData> = {}
     for (const img of imageData ?? []) {
@@ -53,7 +55,8 @@ export async function GET(req: NextRequest) {
 
     const eventsWithStats = events.map((e) => {
       const imgs = imagesByEvent[e.id] ?? []
-      const preview = imgs.find((i) => i.image_type === 'original') ?? imgs[0] ?? null
+      // 登録順（sort_order→uploaded_at）で並んでいるため、先頭＝左上をカードのプレビューに使う
+      const preview = imgs[0] ?? null
       return {
         ...e,
         image_count: imgs.length,

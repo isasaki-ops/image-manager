@@ -20,63 +20,13 @@ const CATEGORY_SECTION_BORDER: Record<string, string> = {
   '02': 'border-fuchsia-400/50 shadow-[0_0_16px_rgba(217,70,239,0.08)]',
 }
 
-interface ImagePair {
-  original: ImageRecord
-  thumbnail: ImageRecord | null
-}
-
-// ファイル名の連番サフィックス（_2, _3, ...）はオリジナルとサムネイルで付与位置が異なる
-// （例: "イベント名_2.png" と "イベント名_600x400_2.jpg"）ため、末尾の連番を抜き出して
-// ベース名+連番の組み合わせで一致判定する
-function parseOriginalBase(fileName: string): { base: string; index: number } {
-  const noExt = fileName.replace(/\.[^.]+$/, '')
-  const m = noExt.match(/^(.*)_(\d+)$/)
-  return m ? { base: m[1], index: parseInt(m[2], 10) } : { base: noExt, index: 1 }
-}
-
-function parseThumbBase(fileName: string): { base: string; index: number } {
-  const noExt = fileName.replace(/\.[^.]+$/, '')
-  const withoutSize = noExt.replace(/_600x400/, '')
-  const m = withoutSize.match(/^(.*)_(\d+)$/)
-  return m ? { base: m[1], index: parseInt(m[2], 10) } : { base: withoutSize, index: 1 }
-}
-
-function pairImages(images: ImageRecord[]): { pairs: ImagePair[]; orphanThumbs: ImageRecord[] } {
-  const originals = images.filter((i) => i.image_type === 'original')
-  const thumbnails = images.filter((i) => i.image_type === '600x400')
-  const usedThumbIds = new Set<string>()
-  const thumbByOriginalId = new Map<string, ImageRecord>()
-
-  const originalInfo = originals.map((orig) => ({ orig, ...parseOriginalBase(orig.file_name ?? '') }))
-  const thumbInfo = thumbnails
-    .filter((t) => !!t.file_name)
-    .map((t) => ({ thumb: t, ...parseThumbBase(t.file_name!) }))
-
-  // 1st pass: ベース名+連番が完全一致するペアを優先
-  for (const oi of originalInfo) {
-    const match = thumbInfo.find((ti) => !usedThumbIds.has(ti.thumb.id) && ti.base === oi.base && ti.index === oi.index)
-    if (match) {
-      usedThumbIds.add(match.thumb.id)
-      thumbByOriginalId.set(oi.orig.id, match.thumb)
-    }
-  }
-  // 2nd pass: 過去の削除等で連番がずれているケースをベース名のみで救済
-  for (const oi of originalInfo) {
-    if (thumbByOriginalId.has(oi.orig.id)) continue
-    const match = thumbInfo.find((ti) => !usedThumbIds.has(ti.thumb.id) && ti.base === oi.base)
-    if (match) {
-      usedThumbIds.add(match.thumb.id)
-      thumbByOriginalId.set(oi.orig.id, match.thumb)
-    }
-  }
-
-  const pairs: ImagePair[] = originals.map((orig) => ({
-    original: orig,
-    thumbnail: thumbByOriginalId.get(orig.id) ?? null,
-  }))
-
-  const orphanThumbs = thumbnails.filter((t) => !usedThumbIds.has(t.id))
-  return { pairs, orphanThumbs }
+// このイベント内に、対象画像と同じベース名の600×400画像が既に存在するか（重複作成の確認用の簡易チェック）
+function hasSiblingThumbnail(img: ImageRecord, allImages: ImageRecord[]): boolean {
+  const base = (img.file_name ?? '').replace(/\.[^.]+$/, '')
+  if (!base) return false
+  return allImages.some(
+    (i) => i.id !== img.id && i.image_type === '600x400' && (i.file_name ?? '').startsWith(`${base}_600x400`)
+  )
 }
 
 function ImageThumb({
@@ -85,16 +35,14 @@ function ImageThumb({
   onUnlink,
   onCreated600x400,
   onRenamed,
-  isThumbnail,
-  hasThumbnail,
+  hasSiblingThumbnail,
 }: {
   img: ImageRecord
   onDelete: (id: string) => void
   onUnlink: (id: string) => void
   onCreated600x400?: (newImg: ImageRecord) => void
   onRenamed: (id: string, fileName: string) => void
-  isThumbnail?: boolean
-  hasThumbnail?: boolean
+  hasSiblingThumbnail?: boolean
 }) {
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -114,7 +62,7 @@ function ImageThumb({
       : '---'
 
   const handleCreate = async () => {
-    if (hasThumbnail && !confirm('すでに600×400画像があります。新たに作成しますか？')) return
+    if (hasSiblingThumbnail && !confirm('すでに600×400画像があります。新たに作成しますか？')) return
     setCreating(true)
     try {
       const res = await fetch(`/api/images/${img.id}/duplicate`, { method: 'POST' })
@@ -235,7 +183,7 @@ function ImageThumb({
       <div className="relative w-full aspect-[3/2] bg-zinc-900 rounded-lg overflow-hidden border border-zinc-700">
         {img.r2_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={img.r2_url} alt={img.file_name ?? ''} className="w-full h-full object-cover" />
+          <img src={img.r2_url} alt={img.file_name ?? ''} draggable={false} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-zinc-700">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -283,9 +231,9 @@ function ImageThumb({
         </a>
         <button
           onClick={handleCreate}
-          disabled={isThumbnail || isAlready600x400 || creating}
+          disabled={isAlready600x400 || creating}
           className={
-            isThumbnail || isAlready600x400
+            isAlready600x400
               ? 'text-xs py-1.5 bg-zinc-900 text-zinc-600 border border-zinc-800 rounded-lg cursor-not-allowed'
               : 'text-xs py-1.5 bg-black text-teal-300 border border-teal-400/70 font-medium rounded-lg shadow-[0_0_8px_rgba(45,212,191,0.35)] hover:bg-teal-400 hover:text-black hover:shadow-[0_0_14px_rgba(45,212,191,0.8)] disabled:opacity-50 transition-all'
           }
@@ -345,6 +293,10 @@ export default function EventDetailPage() {
   const [loadingUnlinked, setLoadingUnlinked] = useState(false)
   const [linkingImageId, setLinkingImageId] = useState<string | null>(null)
   const [pickerSearch, setPickerSearch] = useState('')
+
+  // 画像の並び替え（ドラッグ&ドロップ）
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
 
   const fetchEvent = useCallback(async () => {
     setIsLoading(true)
@@ -488,6 +440,40 @@ export default function EventDetailPage() {
     setImages((prev) => prev.map((i) => (i.id === imageId ? { ...i, file_name: fileName } : i)))
   }
 
+  const persistImageOrder = async (orderedIds: string[]) => {
+    try {
+      const res = await fetch(`/api/events/${id}/images/reorder`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderedIds }),
+      })
+      if (!res.ok) throw new Error('並び替えに失敗しました')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '並び替えに失敗しました')
+      await refreshImages()
+    }
+  }
+
+  const handleImageDrop = (targetId: string) => {
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null)
+      setDragOverId(null)
+      return
+    }
+    setImages((prev) => {
+      const fromIndex = prev.findIndex((i) => i.id === draggedId)
+      const toIndex = prev.findIndex((i) => i.id === targetId)
+      if (fromIndex === -1 || toIndex === -1) return prev
+      const next = [...prev]
+      const [moved] = next.splice(fromIndex, 1)
+      next.splice(toIndex, 0, moved)
+      persistImageOrder(next.map((i) => i.id))
+      return next
+    })
+    setDraggedId(null)
+    setDragOverId(null)
+  }
+
   const handleDeleteEvent = async () => {
     if (!confirm(`「${event?.name}」を削除しますか？\n（紐づいている画像はイベント未設定になります）`)) return
     const res = await fetch(`/api/events/${id}`, { method: 'DELETE' })
@@ -510,8 +496,6 @@ export default function EventDetailPage() {
       </div>
     )
   }
-
-  const { pairs, orphanThumbs } = pairImages(images)
 
   return (
     <div className="min-h-screen">
@@ -619,28 +603,42 @@ export default function EventDetailPage() {
           {images.length === 0 ? (
             <p className="text-sm text-zinc-600 py-6 text-center">画像が登録されていません</p>
           ) : (
-            <div className="space-y-6">
-              {pairs.map(({ original, thumbnail }) => (
-                <div key={original.id} className="grid grid-cols-2 gap-4 pb-6 border-b border-zinc-800 last:border-0 last:pb-0">
+            <div className="grid grid-cols-2 gap-4">
+              {images.map((img) => (
+                <div
+                  key={img.id}
+                  draggable
+                  onDragStart={(e) => {
+                    setDraggedId(img.id)
+                    e.dataTransfer.effectAllowed = 'move'
+                    e.dataTransfer.setData('text/plain', img.id)
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    if (dragOverId !== img.id) setDragOverId(img.id)
+                  }}
+                  onDragLeave={() => setDragOverId((prev) => (prev === img.id ? null : prev))}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    handleImageDrop(img.id)
+                  }}
+                  onDragEnd={() => { setDraggedId(null); setDragOverId(null) }}
+                  className={`cursor-grab active:cursor-grabbing rounded-xl transition-all ${
+                    draggedId === img.id ? 'opacity-40' : ''
+                  } ${
+                    dragOverId === img.id && draggedId !== img.id
+                      ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-zinc-950'
+                      : ''
+                  }`}
+                >
                   <ImageThumb
-                    img={original}
+                    img={img}
                     onDelete={handleDeleteImage}
                     onUnlink={handleUnlinkImage}
                     onCreated600x400={handleCreated600x400}
                     onRenamed={handleRenamedImage}
-                    hasThumbnail={!!thumbnail}
+                    hasSiblingThumbnail={hasSiblingThumbnail(img, images)}
                   />
-                  {thumbnail && (
-                    <ImageThumb img={thumbnail} onDelete={handleDeleteImage} onUnlink={handleUnlinkImage} onRenamed={handleRenamedImage} isThumbnail />
-                  )}
-                </div>
-              ))}
-
-              {/* Orphan thumbnails (600×400 without matching original) */}
-              {orphanThumbs.map((img) => (
-                <div key={img.id} className="grid grid-cols-2 gap-4 pb-6 border-b border-zinc-800 last:border-0 last:pb-0">
-                  <ImageThumb img={img} onDelete={handleDeleteImage} onUnlink={handleUnlinkImage} onRenamed={handleRenamedImage} isThumbnail />
-                  <div />
                 </div>
               ))}
             </div>
