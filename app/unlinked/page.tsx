@@ -14,8 +14,6 @@ const CATEGORY_CODE_COLOR: Record<string, string> = {
   '01': 'text-cyan-300',
   '02': 'text-fuchsia-300',
 }
-const SEARCH_THRESHOLD = 0.55
-
 
 function ImageCard({ img, onDelete }: { img: ImageRecord; onDelete?: (id: string) => void }) {
   const [deleting, setDeleting] = useState(false)
@@ -91,7 +89,6 @@ function EventPicker({
     try {
       const params = new URLSearchParams({
         q,
-        threshold: String(SEARCH_THRESHOLD),
         limit: '50',
       })
       if (cat) params.set('category', cat)

@@ -25,21 +25,57 @@ interface ImagePair {
   thumbnail: ImageRecord | null
 }
 
+// ファイル名の連番サフィックス（_2, _3, ...）はオリジナルとサムネイルで付与位置が異なる
+// （例: "イベント名_2.png" と "イベント名_600x400_2.jpg"）ため、末尾の連番を抜き出して
+// ベース名+連番の組み合わせで一致判定する
+function parseOriginalBase(fileName: string): { base: string; index: number } {
+  const noExt = fileName.replace(/\.[^.]+$/, '')
+  const m = noExt.match(/^(.*)_(\d+)$/)
+  return m ? { base: m[1], index: parseInt(m[2], 10) } : { base: noExt, index: 1 }
+}
+
+function parseThumbBase(fileName: string): { base: string; index: number } {
+  const noExt = fileName.replace(/\.[^.]+$/, '')
+  const withoutSize = noExt.replace(/_600x400/, '')
+  const m = withoutSize.match(/^(.*)_(\d+)$/)
+  return m ? { base: m[1], index: parseInt(m[2], 10) } : { base: withoutSize, index: 1 }
+}
+
 function pairImages(images: ImageRecord[]): { pairs: ImagePair[]; orphanThumbs: ImageRecord[] } {
   const originals = images.filter((i) => i.image_type === 'original')
   const thumbnails = images.filter((i) => i.image_type === '600x400')
-  const usedIds = new Set<string>()
+  const usedThumbIds = new Set<string>()
+  const thumbByOriginalId = new Map<string, ImageRecord>()
 
-  const pairs: ImagePair[] = originals.map((orig) => {
-    const base = orig.file_name?.replace(/\.[^.]+$/, '') ?? ''
-    const thumb = thumbnails.find(
-      (t) => !usedIds.has(t.id) && t.file_name === `${base}_600x400.jpg`
-    )
-    if (thumb) usedIds.add(thumb.id)
-    return { original: orig, thumbnail: thumb ?? null }
-  })
+  const originalInfo = originals.map((orig) => ({ orig, ...parseOriginalBase(orig.file_name ?? '') }))
+  const thumbInfo = thumbnails
+    .filter((t) => !!t.file_name)
+    .map((t) => ({ thumb: t, ...parseThumbBase(t.file_name!) }))
 
-  const orphanThumbs = thumbnails.filter((t) => !usedIds.has(t.id))
+  // 1st pass: ベース名+連番が完全一致するペアを優先
+  for (const oi of originalInfo) {
+    const match = thumbInfo.find((ti) => !usedThumbIds.has(ti.thumb.id) && ti.base === oi.base && ti.index === oi.index)
+    if (match) {
+      usedThumbIds.add(match.thumb.id)
+      thumbByOriginalId.set(oi.orig.id, match.thumb)
+    }
+  }
+  // 2nd pass: 過去の削除等で連番がずれているケースをベース名のみで救済
+  for (const oi of originalInfo) {
+    if (thumbByOriginalId.has(oi.orig.id)) continue
+    const match = thumbInfo.find((ti) => !usedThumbIds.has(ti.thumb.id) && ti.base === oi.base)
+    if (match) {
+      usedThumbIds.add(match.thumb.id)
+      thumbByOriginalId.set(oi.orig.id, match.thumb)
+    }
+  }
+
+  const pairs: ImagePair[] = originals.map((orig) => ({
+    original: orig,
+    thumbnail: thumbByOriginalId.get(orig.id) ?? null,
+  }))
+
+  const orphanThumbs = thumbnails.filter((t) => !usedThumbIds.has(t.id))
   return { pairs, orphanThumbs }
 }
 

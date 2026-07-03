@@ -12,6 +12,12 @@ const CATEGORIES = [
   { id: '02', label: '来店' },
 ] as const
 
+const parseCatFilter = (sp: URLSearchParams): Set<string> => {
+  const cat = sp.get('cat')
+  if (cat === '01' || cat === '02') return new Set([cat])
+  return new Set(['01', '02'])
+}
+
 export default function HomePage() {
   const [events, setEvents] = useState<EventWithStats[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -20,13 +26,16 @@ export default function HomePage() {
   const [isSearchMode, setIsSearchMode] = useState(false)
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(false)
-  const [catFilter, setCatFilter] = useState<Set<string>>(new Set(['01', '02']))
+  const [catFilter, setCatFilter] = useState<Set<string>>(
+    () => (typeof window !== 'undefined' ? parseCatFilter(new URLSearchParams(window.location.search)) : new Set(['01', '02']))
+  )
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
-  const [noImages, setNoImages] = useState(false)
   const [searchBoxKey, setSearchBoxKey] = useState(0)
   const [searchBoxInitial, setSearchBoxInitial] = useState<string | null>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const loadingMoreRef = useRef(false)
+  // fetchEvents実行中はloadMoreを止めるための同期フラグ（stateのクロージャ遅延による競合を防ぐ）
+  const fetchInFlightRef = useRef(false)
   const initialQuery = useMemo(
     () => (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('q') ?? '' : ''),
     []
@@ -35,40 +44,43 @@ export default function HomePage() {
   const buildCategoryParam = (filter: Set<string>) =>
     filter.size === 1 ? [...filter][0] : undefined
 
-  const fetchEvents = useCallback(async (query: string, filter: Set<string> = catFilter, noImagesOverride?: boolean) => {
-    // URLに検索クエリを保持（戻るボタンで復元できるよう）
+  const fetchEvents = useCallback(async (query: string, filter: Set<string> = catFilter) => {
+    // URLに検索条件を保持（戻るボタンで復元できるよう）
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
       if (query) url.searchParams.set('q', query)
       else url.searchParams.delete('q')
+      const categoryParam = buildCategoryParam(filter)
+      if (categoryParam) url.searchParams.set('cat', categoryParam)
+      else url.searchParams.delete('cat')
       window.history.replaceState(window.history.state, '', url.toString())
     }
+    fetchInFlightRef.current = true
     setIsLoading(true)
-    const noImgs = noImagesOverride !== undefined ? noImagesOverride : noImages
     try {
       const categoryParam = buildCategoryParam(filter)
       const catSuffix = categoryParam ? `&category=${categoryParam}` : ''
-      const noImgSuffix = noImgs ? '&noImages=true' : ''
       const url = query
-        ? `/api/events?q=${encodeURIComponent(query)}&threshold=0.55${catSuffix}${noImgSuffix}`
-        : `/api/events?offset=0${catSuffix}${noImgSuffix}`
+        ? `/api/events?q=${encodeURIComponent(query)}${catSuffix}`
+        : `/api/events?offset=0${catSuffix}`
       const res = await fetch(url)
       const data = await res.json()
       const evts: EventWithStats[] = data.events ?? []
       setEvents(evts)
       setSearchQuery(query)
       setIsSearchMode(!!query)
-      setHasMore(!query && !noImgs && (data.hasMore ?? false))
+      setHasMore(!query && (data.hasMore ?? false))
       setOffset(query ? 0 : PAGE_SIZE)
     } catch {
       setEvents([])
     } finally {
       setIsLoading(false)
+      fetchInFlightRef.current = false
     }
-  }, [catFilter, noImages])
+  }, [catFilter])
 
   const loadMore = useCallback(async () => {
-    if (loadingMoreRef.current || !hasMore) return
+    if (loadingMoreRef.current || fetchInFlightRef.current || isSearchMode || !hasMore) return
     loadingMoreRef.current = true
     setIsLoadingMore(true)
     try {
@@ -84,17 +96,20 @@ export default function HomePage() {
       loadingMoreRef.current = false
       setIsLoadingMore(false)
     }
-  }, [hasMore, offset, catFilter])
+  }, [hasMore, offset, catFilter, isSearchMode])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchEvents(initialQuery) }, [])
 
   useEffect(() => {
     const handlePopState = () => {
-      const q = new URLSearchParams(window.location.search).get('q') ?? ''
+      const sp = new URLSearchParams(window.location.search)
+      const q = sp.get('q') ?? ''
+      const filter = parseCatFilter(sp)
       setSearchBoxInitial(q)
       setSearchBoxKey((k) => k + 1)
-      fetchEvents(q)
+      setCatFilter(filter)
+      fetchEvents(q, filter)
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
@@ -132,12 +147,6 @@ export default function HomePage() {
     })
   }
 
-  const handleNoImagesToggle = () => {
-    const next = !noImages
-    setNoImages(next)
-    fetchEvents(searchQuery, catFilter, next)
-  }
-
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-cyan-400/40 shadow-[0_0_24px_rgba(34,211,238,0.15)]">
@@ -149,12 +158,10 @@ export default function HomePage() {
               setSearchBoxKey((k) => k + 1)
               fetchEvents('')
             }}
-            className="whitespace-nowrap text-left hover:opacity-80 transition-opacity"
+            className="whitespace-nowrap shrink-0 hover:opacity-80 transition-opacity"
           >
-            <h1 className="text-lg font-black leading-tight tracking-wide text-white [text-shadow:0_0_6px_#22d3ee,0_0_20px_rgba(34,211,238,0.6)]">
-              イベントマネージャー
-            </h1>
-            <p className="text-xs text-cyan-300/60">パチンコ・パチスロイベント管理</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="イベントマネージャー" className="h-10 w-auto object-contain" />
           </button>
           <div className="flex-1 max-w-md">
             <SearchBox
@@ -198,20 +205,10 @@ export default function HomePage() {
               />
               <span className="text-sm text-zinc-300">{label}</span>
               {categoryCounts[id] != null && (
-                <span className="text-xs text-zinc-500">({categoryCounts[id]}件)</span>
+                <span className="text-xs text-zinc-300">({categoryCounts[id]}件)</span>
               )}
             </label>
           ))}
-          <div className="w-px h-4 bg-zinc-700" />
-          <label className="flex items-center gap-1.5 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={noImages}
-              onChange={handleNoImagesToggle}
-              className="w-4 h-4 accent-amber-400"
-            />
-            <span className="text-sm text-zinc-300">画像未設定</span>
-          </label>
         </div>
       </header>
 
@@ -221,24 +218,24 @@ export default function HomePage() {
             「{searchQuery}」の検索結果 — {events.length} 件
           </p>
         )}
-        {isLoading ? (
+        {isLoading && (
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin shadow-[0_0_12px_rgba(34,211,238,0.6)]" />
           </div>
-        ) : (
-          <>
-            <EventGrid events={events} />
-            <div ref={sentinelRef} className="h-1 mt-4" />
-            {isLoadingMore && (
-              <div className="flex justify-center py-6">
-                <div className="w-6 h-6 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin shadow-[0_0_12px_rgba(34,211,238,0.6)]" />
-              </div>
-            )}
-            {!isSearchMode && !hasMore && events.length > 0 && (
-              <p className="text-center text-sm text-zinc-500 py-6">全 {events.length} 件</p>
-            )}
-          </>
         )}
+        {/* sentinelはローディング中もDOMに残し、IntersectionObserverの監視対象を維持する */}
+        <div className={isLoading ? 'hidden' : ''}>
+          <EventGrid events={events} />
+          {isLoadingMore && (
+            <div className="flex justify-center py-6">
+              <div className="w-6 h-6 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin shadow-[0_0_12px_rgba(34,211,238,0.6)]" />
+            </div>
+          )}
+          {!isSearchMode && !hasMore && events.length > 0 && (
+            <p className="text-center text-sm text-zinc-500 py-6">全 {events.length} 件</p>
+          )}
+        </div>
+        <div ref={sentinelRef} className="h-1 mt-4" />
       </main>
     </div>
   )

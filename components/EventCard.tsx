@@ -49,7 +49,7 @@ export default function EventCard({ event }: { event: EventWithStats }) {
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLOR[event.category_id] ?? 'bg-zinc-800 text-zinc-400'}`}>
                 {CATEGORY_LABEL[event.category_id] ?? event.category_id}
               </span>
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-zinc-300">
                 {event.image_count > 0 ? `📷 ${event.image_count}枚` : '画像なし'}
               </span>
             </div>

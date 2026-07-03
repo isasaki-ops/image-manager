@@ -29,36 +29,14 @@ export async function searchImages(
   return merged.slice(0, limit)
 }
 
+// イベント検索はあいまい検索（ベクトル類似度）を行わず、イベント名・キーワードに
+// 検索語が実際に含まれているかどうかのみで判定する
 export async function searchEvents(
   query: string,
   limit: number = 20,
-  options?: { threshold?: number; categoryId?: string }
+  options?: { categoryId?: string }
 ): Promise<Event[]> {
-  const threshold = options?.threshold ?? 0.55
-  const categoryId = options?.categoryId
-
-  const [vectorResults, textResults] = await Promise.all([
-    vectorSearchEvents(query, limit, threshold),
-    textSearchEvents(query, limit, categoryId),
-  ])
-
-  const seen = new Set<string>()
-  const merged: Event[] = []
-
-  for (const item of textResults) {
-    if (!seen.has(item.id)) {
-      seen.add(item.id)
-      merged.push(item)
-    }
-  }
-  for (const item of vectorResults) {
-    if (!seen.has(item.id) && (!categoryId || item.category_id === categoryId)) {
-      seen.add(item.id)
-      merged.push(item)
-    }
-  }
-
-  return merged.slice(0, limit)
+  return textSearchEvents(query, limit, options?.categoryId)
 }
 
 async function vectorSearchImages(query: string, limit: number): Promise<SearchResult[]> {
@@ -70,21 +48,6 @@ async function vectorSearchImages(query: string, limit: number): Promise<SearchR
     })
     if (error) return []
     return (data as SearchResult[]) ?? []
-  } catch {
-    return []
-  }
-}
-
-async function vectorSearchEvents(query: string, limit: number, threshold: number = 0.55): Promise<Event[]> {
-  try {
-    const queryVector = await generateEmbedding(query)
-    const { data, error } = await getSupabaseAdmin().rpc('search_events', {
-      query_vector: queryVector,
-      match_limit: limit,
-      match_threshold: threshold,
-    })
-    if (error) return []
-    return (data as Event[]) ?? []
   } catch {
     return []
   }
@@ -133,7 +96,7 @@ async function textSearchImages(query: string, limit: number): Promise<SearchRes
 async function textSearchEvents(query: string, limit: number, categoryId?: string): Promise<Event[]> {
   const escape = (s: string) => s.replace(/[%_\\]/g, '\\$&')
   const patterns = buildPatterns(query).map((s) => `%${escape(s)}%`)
-  const cols = ['name', 'keywords', 'memo']
+  const cols = ['name', 'keywords']
   const orClause = patterns
     .flatMap((p) => cols.map((col) => `${col}.ilike.${p}`))
     .join(',')
