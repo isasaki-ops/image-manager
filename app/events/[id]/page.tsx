@@ -139,6 +139,7 @@ function ImageThumb({
 
   const handleWpUpload = async () => {
     if (wpDone && !confirm('すでにWPに登録済みです。再アップロードしますか？')) return
+    if (!isAlready600x400 && !confirm('注意！600×400サイズではありません。アップロードしていいですか？')) return
     if (!confirm('ファイル名の先頭に image_ を付けてアップロードします。よろしいですか？')) return
     setWpUploading(true)
     try {
