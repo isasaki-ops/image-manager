@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import BackButton from '@/components/BackButton'
 import CenterPopup from '@/components/CenterPopup'
-import { REGIONS, ALL_REGION_IDS } from '@/lib/regions'
+import { REGIONS } from '@/lib/regions'
 
 export default function NewEventPage() {
   const router = useRouter()
@@ -13,7 +13,7 @@ export default function NewEventPage() {
   const [categoryId, setCategoryId] = useState<'01' | '02'>('01')
   const [keywords, setKeywords] = useState('')
   const [memo, setMemo] = useState('')
-  const [regionIds, setRegionIds] = useState<string[]>(ALL_REGION_IDS)
+  const [regionIds, setRegionIds] = useState<string[]>([])
 
   const toggleRegion = (id: string) => {
     setRegionIds((prev) =>

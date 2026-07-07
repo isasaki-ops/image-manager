@@ -565,7 +565,7 @@ export default function EventDetailPage() {
         {/* 地方 */}
         <section className="bg-zinc-950 rounded-2xl border border-cyan-400/50 shadow-[0_0_16px_rgba(34,211,238,0.08)] p-5">
           <h2 className="text-sm font-semibold text-zinc-300 mb-3">地方</h2>
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
+          <div className="flex items-center flex-wrap gap-x-4 gap-y-2">
             {REGIONS.map(({ id: regionId, label }) => (
               <label key={regionId} className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -577,6 +577,14 @@ export default function EventDetailPage() {
                 <span className="text-sm text-zinc-200">{label}</span>
               </label>
             ))}
+            <button
+              type="button"
+              onClick={() => setRegionIds([])}
+              disabled={regionIds.length === 0}
+              className="text-xs px-2.5 py-1 bg-black text-zinc-400 border border-zinc-600 rounded-lg hover:border-rose-400 hover:text-rose-300 disabled:opacity-40 disabled:hover:border-zinc-600 disabled:hover:text-zinc-400 transition-all"
+            >
+              全て外す
+            </button>
           </div>
         </section>
 
