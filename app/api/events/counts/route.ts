@@ -1,11 +1,18 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { buildRegionOrFilter } from '@/lib/search'
+import { parseRegionParam } from '@/lib/regions'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const { data, error } = await getSupabaseAdmin()
-      .from('events')
-      .select('category_id')
+    const { searchParams } = new URL(req.url)
+    const { regionIds, includeNoneRegion } = parseRegionParam(searchParams.get('region'))
+
+    let q = getSupabaseAdmin().from('events').select('category_id')
+    const regionOr = buildRegionOrFilter(regionIds, includeNoneRegion)
+    if (regionOr) q = q.or(regionOr)
+
+    const { data, error } = await q
 
     if (error) {
       return NextResponse.json({ error: 'Failed to fetch counts' }, { status: 500 })

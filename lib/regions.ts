@@ -34,3 +34,17 @@ export const ALL_REGION_FILTER_IDS: string[] = REGION_FILTER_OPTIONS.map((r) => 
 export function isValidRegionFilterId(value: string): boolean {
   return ALL_REGION_FILTER_IDS.includes(value)
 }
+
+// `region`クエリパラメータ（カンマ区切り、"none"含む）を解析する。
+// 全件選択時は「絞り込みなし」と同義なので undefined/false を返す。
+export function parseRegionParam(
+  regionParam: string | null
+): { regionIds?: string[]; includeNoneRegion: boolean } {
+  const tokens = regionParam ? regionParam.split(',').filter(isValidRegionFilterId) : []
+  const isFiltering = tokens.length > 0 && tokens.length < ALL_REGION_FILTER_IDS.length
+  if (!isFiltering) return { regionIds: undefined, includeNoneRegion: false }
+  return {
+    regionIds: tokens.filter((t) => t !== NONE_REGION_ID),
+    includeNoneRegion: tokens.includes(NONE_REGION_ID),
+  }
+}

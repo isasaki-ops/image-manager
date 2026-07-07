@@ -140,20 +140,38 @@ export default function HomePage() {
       setCatFilter(filter)
       setRegionFilter(regFilter)
       fetchEvents(q, filter, regFilter)
+      fetchCategoryCounts(regFilter)
+      fetchRegionCounts(filter)
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchEvents])
 
+  // カテゴリ件数は「現在選択中の地方」で、地方件数は「現在選択中のカテゴリ」で絞った上で集計する
+  // （もう片方の軸の選択と組み合わせた実際の該当件数を表示するため）
+  const fetchCategoryCounts = useCallback(async (regFilter: Set<string> = regionFilter) => {
+    const regionParam = buildRegionParam(regFilter)
+    const suffix = regionParam ? `?region=${encodeURIComponent(regionParam)}` : ''
+    try {
+      const res = await fetch(`/api/events/counts${suffix}`)
+      setCategoryCounts(await res.json())
+    } catch { /* ignore */ }
+  }, [regionFilter])
+
+  const fetchRegionCounts = useCallback(async (filter: Set<string> = catFilter) => {
+    const categoryParam = buildCategoryParam(filter)
+    const suffix = categoryParam ? `?category=${categoryParam}` : ''
+    try {
+      const res = await fetch(`/api/events/region-counts${suffix}`)
+      setRegionCounts(await res.json())
+    } catch { /* ignore */ }
+  }, [catFilter])
+
   useEffect(() => {
-    fetch('/api/events/counts')
-      .then((r) => r.json())
-      .then((data) => setCategoryCounts(data))
-      .catch(() => {})
-    fetch('/api/events/region-counts')
-      .then((r) => r.json())
-      .then((data) => setRegionCounts(data))
-      .catch(() => {})
+    fetchCategoryCounts()
+    fetchRegionCounts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -177,6 +195,7 @@ export default function HomePage() {
         next.add(id)
       }
       fetchEvents(searchQuery, next, regionFilter)
+      fetchRegionCounts(next)
       return next
     })
   }
@@ -191,6 +210,7 @@ export default function HomePage() {
         next.add(id)
       }
       fetchEvents(searchQuery, catFilter, next)
+      fetchCategoryCounts(next)
       return next
     })
   }

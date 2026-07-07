@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase'
 import { generateKeywordsFromEventName, generateEmbedding } from '@/lib/ai'
 import { searchEvents, buildRegionOrFilter } from '@/lib/search'
 import { applyImageOrder } from '@/lib/imageOrder'
-import { isValidRegionId, isValidRegionFilterId, ALL_REGION_FILTER_IDS, NONE_REGION_ID } from '@/lib/regions'
+import { isValidRegionId, parseRegionParam } from '@/lib/regions'
 
 const PAGE_SIZE = 40
 
@@ -14,19 +14,7 @@ export async function GET(req: NextRequest) {
     const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10))
     const limit = Math.min(100, parseInt(searchParams.get('limit') ?? String(PAGE_SIZE), 10))
     const categoryId = searchParams.get('category') || undefined
-    const regionParam = searchParams.get('region')
-    const regionTokens = regionParam
-      ? regionParam.split(',').filter(isValidRegionFilterId)
-      : undefined
-    // 全地方（「設定なし」含む）選択時は「絞り込みなし」と同義なのでフィルタを省略
-    const isFilteringRegions =
-      regionTokens !== undefined &&
-      regionTokens.length > 0 &&
-      regionTokens.length < ALL_REGION_FILTER_IDS.length
-    const regionFilter = isFilteringRegions
-      ? regionTokens.filter((t) => t !== NONE_REGION_ID)
-      : undefined
-    const includeNoneRegion = isFilteringRegions ? regionTokens.includes(NONE_REGION_ID) : false
+    const { regionIds: regionFilter, includeNoneRegion } = parseRegionParam(searchParams.get('region'))
 
     let events
     let hasMore = false

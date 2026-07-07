@@ -1,12 +1,16 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { NONE_REGION_ID } from '@/lib/regions'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const { data, error } = await getSupabaseAdmin()
-      .from('events')
-      .select('region_ids')
+    const { searchParams } = new URL(req.url)
+    const categoryId = searchParams.get('category') || undefined
+
+    let q = getSupabaseAdmin().from('events').select('region_ids')
+    if (categoryId) q = q.eq('category_id', categoryId)
+
+    const { data, error } = await q
 
     if (error) {
       return NextResponse.json({ error: 'Failed to fetch counts' }, { status: 500 })
