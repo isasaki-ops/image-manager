@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import BackButton from '@/components/BackButton'
+import CenterPopup from '@/components/CenterPopup'
+import { REGIONS, ALL_REGION_IDS } from '@/lib/regions'
 
 export default function NewEventPage() {
   const router = useRouter()
@@ -11,6 +13,13 @@ export default function NewEventPage() {
   const [categoryId, setCategoryId] = useState<'01' | '02'>('01')
   const [keywords, setKeywords] = useState('')
   const [memo, setMemo] = useState('')
+  const [regionIds, setRegionIds] = useState<string[]>(ALL_REGION_IDS)
+
+  const toggleRegion = (id: string) => {
+    setRegionIds((prev) =>
+      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
+    )
+  }
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDone, setIsDone] = useState(false)
   const [error, setError] = useState('')
@@ -31,6 +40,7 @@ export default function NewEventPage() {
           category_id: categoryId,
           keywords: keywords.trim() || undefined,
           memo: memo.trim() || undefined,
+          region_ids: regionIds,
         }),
       })
 
@@ -69,6 +79,24 @@ export default function NewEventPage() {
                     value={val}
                     checked={categoryId === val}
                     onChange={() => setCategoryId(val)}
+                    className="accent-cyan-400"
+                  />
+                  <span className="text-sm text-zinc-200">{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* 地方 */}
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-2">地方</label>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {REGIONS.map(({ id, label }) => (
+                <label key={id} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={regionIds.includes(id)}
+                    onChange={() => toggleRegion(id)}
                     className="accent-cyan-400"
                   />
                   <span className="text-sm text-zinc-200">{label}</span>
@@ -121,12 +149,6 @@ export default function NewEventPage() {
 
           {error && <p className="text-rose-400 text-sm">{error}</p>}
 
-          {isDone && (
-            <p className="text-emerald-300 text-sm font-medium text-center">
-              登録が完了しました。TOPに戻ります…
-            </p>
-          )}
-
           <button
             type="submit"
             disabled={!name.trim() || isSubmitting || isDone}
@@ -136,6 +158,14 @@ export default function NewEventPage() {
           </button>
         </form>
       </main>
+
+      {isDone && (
+        <CenterPopup
+          message="登録が完了しました。TOPに戻ります…"
+          duration={1500}
+          onDismiss={() => {}}
+        />
+      )}
     </div>
   )
 }

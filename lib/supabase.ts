@@ -72,6 +72,7 @@ export type Event = {
   keywords: string | null
   memo: string | null
   search_text: string | null
+  region_ids: string[]
   created_at: string
   updated_at: string
 }

@@ -34,9 +34,9 @@ export async function searchImages(
 export async function searchEvents(
   query: string,
   limit: number = 20,
-  options?: { categoryId?: string }
+  options?: { categoryId?: string; regionIds?: string[] }
 ): Promise<Event[]> {
-  return textSearchEvents(query, limit, options?.categoryId)
+  return textSearchEvents(query, limit, options?.categoryId, options?.regionIds)
 }
 
 async function vectorSearchImages(query: string, limit: number): Promise<SearchResult[]> {
@@ -93,7 +93,12 @@ async function textSearchImages(query: string, limit: number): Promise<SearchRes
   }))
 }
 
-async function textSearchEvents(query: string, limit: number, categoryId?: string): Promise<Event[]> {
+async function textSearchEvents(
+  query: string,
+  limit: number,
+  categoryId?: string,
+  regionIds?: string[]
+): Promise<Event[]> {
   const escape = (s: string) => s.replace(/[%_\\]/g, '\\$&')
   const patterns = buildPatterns(query).map((s) => `%${escape(s)}%`)
   const cols = ['name', 'keywords']
@@ -103,12 +108,13 @@ async function textSearchEvents(query: string, limit: number, categoryId?: strin
 
   let q = getSupabaseAdmin()
     .from('events')
-    .select('id, event_code, category_id, name, keywords, memo, search_text, created_at, updated_at')
+    .select('id, event_code, category_id, name, keywords, memo, search_text, region_ids, created_at, updated_at')
     .or(orClause)
     .order('created_at', { ascending: false })
     .limit(limit)
 
   if (categoryId) q = q.eq('category_id', categoryId)
+  if (regionIds && regionIds.length > 0) q = q.overlaps('region_ids', regionIds)
 
   const { data } = await q
   return (data as Event[]) ?? []

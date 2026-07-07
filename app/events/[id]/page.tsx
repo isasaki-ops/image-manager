@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import BackButton from '@/components/BackButton'
+import CenterPopup from '@/components/CenterPopup'
 import type { Event, ImageRecord } from '@/lib/supabase'
+import { REGIONS } from '@/lib/regions'
 
 const CATEGORY_LABEL: Record<string, string> = { '01': '取材', '02': '来店' }
 const CATEGORY_COLOR: Record<string, string> = {
@@ -18,6 +20,12 @@ const CATEGORY_CODE_COLOR: Record<string, string> = {
 const CATEGORY_SECTION_BORDER: Record<string, string> = {
   '01': 'border-cyan-400/50 shadow-[0_0_16px_rgba(34,211,238,0.08)]',
   '02': 'border-fuchsia-400/50 shadow-[0_0_16px_rgba(217,70,239,0.08)]',
+}
+
+function sameRegionIds(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false
+  const bSet = new Set(b)
+  return a.every((id) => bSet.has(id))
 }
 
 // このイベント内に、対象画像と同じベース名の600×400画像が既に存在するか（重複作成の確認用の簡易チェック）
@@ -284,7 +292,9 @@ export default function EventDetailPage() {
   const [categoryId, setCategoryId] = useState('')
   const [keywords, setKeywords] = useState('')
   const [memo, setMemo] = useState('')
+  const [regionIds, setRegionIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [showSavedPopup, setShowSavedPopup] = useState(false)
   const [generatingKeywords, setGeneratingKeywords] = useState(false)
 
   // Unlinked image picker
@@ -310,6 +320,7 @@ export default function EventDetailPage() {
       setMemo(data.event.memo ?? '')
       setCategoryId(data.event.category_id ?? '')
       setNameValue(data.event.name ?? '')
+      setRegionIds(data.event.region_ids ?? [])
     } finally {
       setIsLoading(false)
     }
@@ -321,8 +332,15 @@ export default function EventDetailPage() {
     nameValue.trim() !== (event.name ?? '') ||
     keywords !== (event.keywords ?? '') ||
     memo !== (event.memo ?? '') ||
-    categoryId !== (event.category_id ?? '')
+    categoryId !== (event.category_id ?? '') ||
+    !sameRegionIds(regionIds, event.region_ids ?? [])
   )
+
+  const toggleRegion = (regionId: string) => {
+    setRegionIds((prev) =>
+      prev.includes(regionId) ? prev.filter((r) => r !== regionId) : [...prev, regionId]
+    )
+  }
 
   const handleSave = async () => {
     if (!event || !isDirty) return
@@ -333,6 +351,7 @@ export default function EventDetailPage() {
       if (keywords !== (event.keywords ?? '')) body.keywords = keywords
       if (memo !== (event.memo ?? '')) body.memo = memo
       if (categoryId !== event.category_id) body.category_id = categoryId
+      if (!sameRegionIds(regionIds, event.region_ids ?? [])) body.region_ids = regionIds
 
       const res = await fetch(`/api/events/${id}`, {
         method: 'PATCH',
@@ -347,7 +366,9 @@ export default function EventDetailPage() {
         keywords: 'keywords' in body ? (keywords.trim() || null) : prev.keywords,
         memo: 'memo' in body ? (memo.trim() || null) : prev.memo,
         category_id: ('category_id' in body ? categoryId : prev.category_id) as '01' | '02',
+        region_ids: ('region_ids' in body ? regionIds : prev.region_ids),
       } : prev)
+      setShowSavedPopup(true)
     } catch (err) {
       alert(err instanceof Error ? err.message : '保存に失敗しました')
     } finally {
@@ -361,6 +382,7 @@ export default function EventDetailPage() {
     setKeywords(event.keywords ?? '')
     setMemo(event.memo ?? '')
     setCategoryId(event.category_id ?? '')
+    setRegionIds(event.region_ids ?? [])
   }
 
   const generateKeywords = async () => {
@@ -537,6 +559,24 @@ export default function EventDetailPage() {
                 </label>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* 地方 */}
+        <section className="bg-zinc-950 rounded-2xl border border-cyan-400/50 shadow-[0_0_16px_rgba(34,211,238,0.08)] p-5">
+          <h2 className="text-sm font-semibold text-zinc-300 mb-3">地方</h2>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {REGIONS.map(({ id: regionId, label }) => (
+              <label key={regionId} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={regionIds.includes(regionId)}
+                  onChange={() => toggleRegion(regionId)}
+                  className="accent-cyan-400"
+                />
+                <span className="text-sm text-zinc-200">{label}</span>
+              </label>
+            ))}
           </div>
         </section>
 
@@ -742,6 +782,10 @@ export default function EventDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showSavedPopup && (
+        <CenterPopup message="保存しました" onDismiss={() => setShowSavedPopup(false)} />
       )}
     </div>
   )

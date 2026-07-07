@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { generateEmbedding, generateKeywordsFromEventName } from '@/lib/ai'
 import { applyImageOrder } from '@/lib/imageOrder'
+import { isValidRegionId } from '@/lib/regions'
 
 export async function GET(
   _req: NextRequest,
@@ -13,7 +14,7 @@ export async function GET(
     const [{ data: event, error }, { data: images }] = await Promise.all([
       getSupabaseAdmin()
         .from('events')
-        .select('id, event_code, category_id, name, keywords, memo, created_at, updated_at')
+        .select('id, event_code, category_id, name, keywords, memo, region_ids, created_at, updated_at')
         .eq('id', id)
         .single(),
       applyImageOrder(
@@ -49,6 +50,12 @@ export async function PATCH(
     if ('keywords' in body) update.keywords = body.keywords?.trim() || null
     if ('memo' in body) update.memo = body.memo?.trim() || null
     if ('category_id' in body) update.category_id = body.category_id
+    if ('region_ids' in body) {
+      if (!Array.isArray(body.region_ids) || !body.region_ids.every(isValidRegionId)) {
+        return NextResponse.json({ error: 'region_ids contains an invalid region' }, { status: 400 })
+      }
+      update.region_ids = body.region_ids
+    }
 
     // Regenerate embedding when name or keywords change; auto-generate keywords if cleared
     if ('name' in body || 'keywords' in body) {

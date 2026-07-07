@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase'
 import { generateKeywordsFromEventName, generateEmbedding } from '@/lib/ai'
 import { searchEvents } from '@/lib/search'
 import { applyImageOrder } from '@/lib/imageOrder'
+import { ALL_REGION_IDS, isValidRegionId } from '@/lib/regions'
 
 const PAGE_SIZE = 40
 
@@ -13,20 +14,30 @@ export async function GET(req: NextRequest) {
     const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10))
     const limit = Math.min(100, parseInt(searchParams.get('limit') ?? String(PAGE_SIZE), 10))
     const categoryId = searchParams.get('category') || undefined
+    const regionParam = searchParams.get('region')
+    const regionIds = regionParam
+      ? regionParam.split(',').filter(isValidRegionId)
+      : undefined
+    // 全地方選択時は「絞り込みなし」と同義なので overlap フィルタを省略
+    const regionFilter =
+      regionIds && regionIds.length > 0 && regionIds.length < ALL_REGION_IDS.length
+        ? regionIds
+        : undefined
 
     let events
     let hasMore = false
 
     if (query) {
-      events = await searchEvents(query, 100, { categoryId })
+      events = await searchEvents(query, 100, { categoryId, regionIds: regionFilter })
     } else {
       let q = getSupabaseAdmin()
         .from('events')
-        .select('id, event_code, category_id, name, keywords, memo, search_text, created_at, updated_at')
+        .select('id, event_code, category_id, name, keywords, memo, search_text, region_ids, created_at, updated_at')
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
 
       if (categoryId) q = q.eq('category_id', categoryId)
+      if (regionFilter) q = q.overlaps('region_ids', regionFilter)
 
       const { data } = await q
       events = data ?? []
@@ -73,13 +84,18 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, category_id, keywords: keywordsInput, memo } = await req.json()
+    const { name, category_id, keywords: keywordsInput, memo, region_ids } = await req.json()
 
     if (!name?.trim()) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 })
     }
     if (!['01', '02'].includes(category_id)) {
       return NextResponse.json({ error: 'category_id must be 01 or 02' }, { status: 400 })
+    }
+    if (region_ids !== undefined) {
+      if (!Array.isArray(region_ids) || !region_ids.every(isValidRegionId)) {
+        return NextResponse.json({ error: 'region_ids contains an invalid region' }, { status: 400 })
+      }
     }
 
     // Generate keywords if not provided
@@ -100,8 +116,9 @@ export async function POST(req: NextRequest) {
         memo: memo?.trim() || null,
         search_text: searchText,
         embedding,
+        region_ids: region_ids ?? ALL_REGION_IDS,
       })
-      .select('id, event_code, category_id, name, keywords, memo, created_at')
+      .select('id, event_code, category_id, name, keywords, memo, region_ids, created_at')
       .single()
 
     if (error || !event) {

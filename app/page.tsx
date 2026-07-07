@@ -5,6 +5,7 @@ import Link from 'next/link'
 import SearchBox from '@/components/SearchBox'
 import EventGrid from '@/components/EventGrid'
 import type { EventWithStats } from '@/lib/supabase'
+import { REGIONS, ALL_REGION_IDS, isValidRegionId } from '@/lib/regions'
 
 const PAGE_SIZE = 40
 const CATEGORIES = [
@@ -18,6 +19,13 @@ const parseCatFilter = (sp: URLSearchParams): Set<string> => {
   return new Set(['01', '02'])
 }
 
+const parseRegionFilter = (sp: URLSearchParams): Set<string> => {
+  const region = sp.get('region')
+  if (!region) return new Set(ALL_REGION_IDS)
+  const ids = region.split(',').filter(isValidRegionId)
+  return ids.length > 0 ? new Set(ids) : new Set(ALL_REGION_IDS)
+}
+
 export default function HomePage() {
   const [events, setEvents] = useState<EventWithStats[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -29,7 +37,11 @@ export default function HomePage() {
   const [catFilter, setCatFilter] = useState<Set<string>>(
     () => (typeof window !== 'undefined' ? parseCatFilter(new URLSearchParams(window.location.search)) : new Set(['01', '02']))
   )
+  const [regionFilter, setRegionFilter] = useState<Set<string>>(
+    () => (typeof window !== 'undefined' ? parseRegionFilter(new URLSearchParams(window.location.search)) : new Set(ALL_REGION_IDS))
+  )
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
+  const [regionCounts, setRegionCounts] = useState<Record<string, number>>({})
   const [searchBoxKey, setSearchBoxKey] = useState(0)
   const [searchBoxInitial, setSearchBoxInitial] = useState<string | null>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -44,7 +56,14 @@ export default function HomePage() {
   const buildCategoryParam = (filter: Set<string>) =>
     filter.size === 1 ? [...filter][0] : undefined
 
-  const fetchEvents = useCallback(async (query: string, filter: Set<string> = catFilter) => {
+  const buildRegionParam = (filter: Set<string>) =>
+    filter.size > 0 && filter.size < ALL_REGION_IDS.length ? [...filter].join(',') : undefined
+
+  const fetchEvents = useCallback(async (
+    query: string,
+    filter: Set<string> = catFilter,
+    regFilter: Set<string> = regionFilter
+  ) => {
     // URLに検索条件を保持（戻るボタンで復元できるよう）
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
@@ -53,16 +72,22 @@ export default function HomePage() {
       const categoryParam = buildCategoryParam(filter)
       if (categoryParam) url.searchParams.set('cat', categoryParam)
       else url.searchParams.delete('cat')
+      const regionParam = buildRegionParam(regFilter)
+      if (regionParam) url.searchParams.set('region', regionParam)
+      else url.searchParams.delete('region')
       window.history.replaceState(window.history.state, '', url.toString())
     }
     fetchInFlightRef.current = true
     setIsLoading(true)
     try {
       const categoryParam = buildCategoryParam(filter)
-      const catSuffix = categoryParam ? `&category=${categoryParam}` : ''
+      const regionParam = buildRegionParam(regFilter)
+      const filterSuffix =
+        (categoryParam ? `&category=${categoryParam}` : '') +
+        (regionParam ? `&region=${encodeURIComponent(regionParam)}` : '')
       const url = query
-        ? `/api/events?q=${encodeURIComponent(query)}${catSuffix}`
-        : `/api/events?offset=0${catSuffix}`
+        ? `/api/events?q=${encodeURIComponent(query)}${filterSuffix}`
+        : `/api/events?offset=0${filterSuffix}`
       const res = await fetch(url)
       const data = await res.json()
       const evts: EventWithStats[] = data.events ?? []
@@ -77,7 +102,7 @@ export default function HomePage() {
       setIsLoading(false)
       fetchInFlightRef.current = false
     }
-  }, [catFilter])
+  }, [catFilter, regionFilter])
 
   const loadMore = useCallback(async () => {
     if (loadingMoreRef.current || fetchInFlightRef.current || isSearchMode || !hasMore) return
@@ -85,8 +110,11 @@ export default function HomePage() {
     setIsLoadingMore(true)
     try {
       const categoryParam = buildCategoryParam(catFilter)
-      const catSuffix = categoryParam ? `&category=${categoryParam}` : ''
-      const res = await fetch(`/api/events?offset=${offset}${catSuffix}`)
+      const regionParam = buildRegionParam(regionFilter)
+      const filterSuffix =
+        (categoryParam ? `&category=${categoryParam}` : '') +
+        (regionParam ? `&region=${encodeURIComponent(regionParam)}` : '')
+      const res = await fetch(`/api/events?offset=${offset}${filterSuffix}`)
       const data = await res.json()
       const evts: EventWithStats[] = data.events ?? []
       setEvents((prev) => [...prev, ...evts])
@@ -96,7 +124,7 @@ export default function HomePage() {
       loadingMoreRef.current = false
       setIsLoadingMore(false)
     }
-  }, [hasMore, offset, catFilter, isSearchMode])
+  }, [hasMore, offset, catFilter, regionFilter, isSearchMode])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchEvents(initialQuery) }, [])
@@ -106,10 +134,12 @@ export default function HomePage() {
       const sp = new URLSearchParams(window.location.search)
       const q = sp.get('q') ?? ''
       const filter = parseCatFilter(sp)
+      const regFilter = parseRegionFilter(sp)
       setSearchBoxInitial(q)
       setSearchBoxKey((k) => k + 1)
       setCatFilter(filter)
-      fetchEvents(q, filter)
+      setRegionFilter(regFilter)
+      fetchEvents(q, filter, regFilter)
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
@@ -119,6 +149,10 @@ export default function HomePage() {
     fetch('/api/events/counts')
       .then((r) => r.json())
       .then((data) => setCategoryCounts(data))
+      .catch(() => {})
+    fetch('/api/events/region-counts')
+      .then((r) => r.json())
+      .then((data) => setRegionCounts(data))
       .catch(() => {})
   }, [])
 
@@ -142,7 +176,21 @@ export default function HomePage() {
       } else {
         next.add(id)
       }
-      fetchEvents(searchQuery, next)
+      fetchEvents(searchQuery, next, regionFilter)
+      return next
+    })
+  }
+
+  const handleRegionToggle = (id: string) => {
+    setRegionFilter((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        if (next.size === 1) return prev // 最低1つは残す
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      fetchEvents(searchQuery, catFilter, next)
       return next
     })
   }
@@ -206,6 +254,24 @@ export default function HomePage() {
               <span className="text-sm text-zinc-300">{label}</span>
               {categoryCounts[id] != null && (
                 <span className="text-xs text-zinc-300">({categoryCounts[id]}件)</span>
+              )}
+            </label>
+          ))}
+        </div>
+
+        {/* 地方フィルター */}
+        <div className="max-w-7xl mx-auto px-4 pb-3 flex items-center gap-5 flex-wrap">
+          {REGIONS.map(({ id, label }) => (
+            <label key={id} className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={regionFilter.has(id)}
+                onChange={() => handleRegionToggle(id)}
+                className="w-4 h-4 accent-cyan-400"
+              />
+              <span className="text-sm text-zinc-300">{label}</span>
+              {regionCounts[id] != null && (
+                <span className="text-xs text-zinc-300">({regionCounts[id]}件)</span>
               )}
             </label>
           ))}
