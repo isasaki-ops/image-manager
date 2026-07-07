@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { NONE_REGION_ID } from '@/lib/regions'
 
 export async function GET() {
   try {
@@ -13,7 +14,12 @@ export async function GET() {
 
     const counts: Record<string, number> = {}
     for (const row of data ?? []) {
-      for (const id of (row.region_ids as string[]) ?? []) {
+      const ids = (row.region_ids as string[]) ?? []
+      if (ids.length === 0) {
+        counts[NONE_REGION_ID] = (counts[NONE_REGION_ID] ?? 0) + 1
+        continue
+      }
+      for (const id of ids) {
         counts[id] = (counts[id] ?? 0) + 1
       }
     }

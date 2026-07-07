@@ -34,9 +34,17 @@ export async function searchImages(
 export async function searchEvents(
   query: string,
   limit: number = 20,
-  options?: { categoryId?: string; regionIds?: string[] }
+  options?: { categoryId?: string; regionIds?: string[]; includeNoneRegion?: boolean }
 ): Promise<Event[]> {
-  return textSearchEvents(query, limit, options?.categoryId, options?.regionIds)
+  return textSearchEvents(query, limit, options?.categoryId, options?.regionIds, options?.includeNoneRegion)
+}
+
+// 地方の絞り込み用ORフィルタ文字列を組み立てる（region_ids配列との重なり or 「設定なし」＝空配列一致）
+export function buildRegionOrFilter(regionIds?: string[], includeNoneRegion?: boolean): string | null {
+  const parts: string[] = []
+  if (regionIds && regionIds.length > 0) parts.push(`region_ids.ov.{${regionIds.join(',')}}`)
+  if (includeNoneRegion) parts.push('region_ids.eq.{}')
+  return parts.length > 0 ? parts.join(',') : null
 }
 
 async function vectorSearchImages(query: string, limit: number): Promise<SearchResult[]> {
@@ -97,7 +105,8 @@ async function textSearchEvents(
   query: string,
   limit: number,
   categoryId?: string,
-  regionIds?: string[]
+  regionIds?: string[],
+  includeNoneRegion?: boolean
 ): Promise<Event[]> {
   const escape = (s: string) => s.replace(/[%_\\]/g, '\\$&')
   const patterns = buildPatterns(query).map((s) => `%${escape(s)}%`)
@@ -114,7 +123,8 @@ async function textSearchEvents(
     .limit(limit)
 
   if (categoryId) q = q.eq('category_id', categoryId)
-  if (regionIds && regionIds.length > 0) q = q.overlaps('region_ids', regionIds)
+  const regionOr = buildRegionOrFilter(regionIds, includeNoneRegion)
+  if (regionOr) q = q.or(regionOr)
 
   const { data } = await q
   return (data as Event[]) ?? []

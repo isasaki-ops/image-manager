@@ -5,7 +5,7 @@ import Link from 'next/link'
 import SearchBox from '@/components/SearchBox'
 import EventGrid from '@/components/EventGrid'
 import type { EventWithStats } from '@/lib/supabase'
-import { REGIONS, ALL_REGION_IDS, isValidRegionId } from '@/lib/regions'
+import { REGION_FILTER_OPTIONS, ALL_REGION_FILTER_IDS, isValidRegionFilterId } from '@/lib/regions'
 
 const PAGE_SIZE = 40
 const CATEGORIES = [
@@ -21,9 +21,9 @@ const parseCatFilter = (sp: URLSearchParams): Set<string> => {
 
 const parseRegionFilter = (sp: URLSearchParams): Set<string> => {
   const region = sp.get('region')
-  if (!region) return new Set(ALL_REGION_IDS)
-  const ids = region.split(',').filter(isValidRegionId)
-  return ids.length > 0 ? new Set(ids) : new Set(ALL_REGION_IDS)
+  if (!region) return new Set(ALL_REGION_FILTER_IDS)
+  const ids = region.split(',').filter(isValidRegionFilterId)
+  return ids.length > 0 ? new Set(ids) : new Set(ALL_REGION_FILTER_IDS)
 }
 
 export default function HomePage() {
@@ -38,7 +38,7 @@ export default function HomePage() {
     () => (typeof window !== 'undefined' ? parseCatFilter(new URLSearchParams(window.location.search)) : new Set(['01', '02']))
   )
   const [regionFilter, setRegionFilter] = useState<Set<string>>(
-    () => (typeof window !== 'undefined' ? parseRegionFilter(new URLSearchParams(window.location.search)) : new Set(ALL_REGION_IDS))
+    () => (typeof window !== 'undefined' ? parseRegionFilter(new URLSearchParams(window.location.search)) : new Set(ALL_REGION_FILTER_IDS))
   )
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
   const [regionCounts, setRegionCounts] = useState<Record<string, number>>({})
@@ -57,7 +57,7 @@ export default function HomePage() {
     filter.size === 1 ? [...filter][0] : undefined
 
   const buildRegionParam = (filter: Set<string>) =>
-    filter.size > 0 && filter.size < ALL_REGION_IDS.length ? [...filter].join(',') : undefined
+    filter.size > 0 && filter.size < ALL_REGION_FILTER_IDS.length ? [...filter].join(',') : undefined
 
   const fetchEvents = useCallback(async (
     query: string,
@@ -261,7 +261,7 @@ export default function HomePage() {
 
         {/* 地方フィルター */}
         <div className="max-w-7xl mx-auto px-4 pb-3 flex items-center gap-5 flex-wrap">
-          {REGIONS.map(({ id, label }) => (
+          {REGION_FILTER_OPTIONS.map(({ id, label }) => (
             <label key={id} className="flex items-center gap-1.5 cursor-pointer select-none">
               <input
                 type="checkbox"

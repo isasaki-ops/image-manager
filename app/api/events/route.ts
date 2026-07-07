@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { generateKeywordsFromEventName, generateEmbedding } from '@/lib/ai'
-import { searchEvents } from '@/lib/search'
+import { searchEvents, buildRegionOrFilter } from '@/lib/search'
 import { applyImageOrder } from '@/lib/imageOrder'
-import { ALL_REGION_IDS, isValidRegionId } from '@/lib/regions'
+import { isValidRegionId, isValidRegionFilterId, ALL_REGION_FILTER_IDS, NONE_REGION_ID } from '@/lib/regions'
 
 const PAGE_SIZE = 40
 
@@ -15,20 +15,24 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(100, parseInt(searchParams.get('limit') ?? String(PAGE_SIZE), 10))
     const categoryId = searchParams.get('category') || undefined
     const regionParam = searchParams.get('region')
-    const regionIds = regionParam
-      ? regionParam.split(',').filter(isValidRegionId)
+    const regionTokens = regionParam
+      ? regionParam.split(',').filter(isValidRegionFilterId)
       : undefined
-    // 全地方選択時は「絞り込みなし」と同義なので overlap フィルタを省略
-    const regionFilter =
-      regionIds && regionIds.length > 0 && regionIds.length < ALL_REGION_IDS.length
-        ? regionIds
-        : undefined
+    // 全地方（「設定なし」含む）選択時は「絞り込みなし」と同義なのでフィルタを省略
+    const isFilteringRegions =
+      regionTokens !== undefined &&
+      regionTokens.length > 0 &&
+      regionTokens.length < ALL_REGION_FILTER_IDS.length
+    const regionFilter = isFilteringRegions
+      ? regionTokens.filter((t) => t !== NONE_REGION_ID)
+      : undefined
+    const includeNoneRegion = isFilteringRegions ? regionTokens.includes(NONE_REGION_ID) : false
 
     let events
     let hasMore = false
 
     if (query) {
-      events = await searchEvents(query, 100, { categoryId, regionIds: regionFilter })
+      events = await searchEvents(query, 100, { categoryId, regionIds: regionFilter, includeNoneRegion })
     } else {
       let q = getSupabaseAdmin()
         .from('events')
@@ -37,7 +41,8 @@ export async function GET(req: NextRequest) {
         .range(offset, offset + limit - 1)
 
       if (categoryId) q = q.eq('category_id', categoryId)
-      if (regionFilter) q = q.overlaps('region_ids', regionFilter)
+      const regionOr = buildRegionOrFilter(regionFilter, includeNoneRegion)
+      if (regionOr) q = q.or(regionOr)
 
       const { data } = await q
       events = data ?? []
@@ -116,7 +121,7 @@ export async function POST(req: NextRequest) {
         memo: memo?.trim() || null,
         search_text: searchText,
         embedding,
-        region_ids: region_ids ?? ALL_REGION_IDS,
+        region_ids: region_ids ?? [],
       })
       .select('id, event_code, category_id, name, keywords, memo, region_ids, created_at')
       .single()
