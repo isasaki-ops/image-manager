@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase'
 import { generateEmbedding, generateKeywordsFromEventName } from '@/lib/ai'
 import { applyImageOrder } from '@/lib/imageOrder'
 import { isValidRegionId } from '@/lib/regions'
+import { toHalfWidthAlnumSymbols } from '@/lib/textNormalize'
 
 export async function GET(
   _req: NextRequest,
@@ -46,7 +47,7 @@ export async function PATCH(
 
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() }
 
-    if ('name' in body) update.name = body.name?.trim() || null
+    if ('name' in body) update.name = body.name?.trim() ? toHalfWidthAlnumSymbols(body.name.trim()) : null
     if ('keywords' in body) update.keywords = body.keywords?.trim() || null
     if ('memo' in body) update.memo = body.memo?.trim() || null
     if ('category_id' in body) update.category_id = body.category_id

@@ -7,6 +7,7 @@ import BackButton from '@/components/BackButton'
 import CenterPopup from '@/components/CenterPopup'
 import type { Event, ImageRecord } from '@/lib/supabase'
 import { REGIONS } from '@/lib/regions'
+import { toHalfWidthAlnumSymbols } from '@/lib/textNormalize'
 
 const CATEGORY_LABEL: Record<string, string> = { '01': '取材', '02': '来店' }
 const CATEGORY_COLOR: Record<string, string> = {
@@ -360,9 +361,11 @@ export default function EventDetailPage() {
       })
       if (!res.ok) throw new Error('保存に失敗しました')
 
+      const normalizedName = 'name' in body ? toHalfWidthAlnumSymbols(nameValue.trim()) || event.name : event.name
+      setNameValue(normalizedName)
       setEvent((prev) => prev ? {
         ...prev,
-        name: 'name' in body ? (nameValue.trim() || prev.name) : prev.name,
+        name: normalizedName,
         keywords: 'keywords' in body ? (keywords.trim() || null) : prev.keywords,
         memo: 'memo' in body ? (memo.trim() || null) : prev.memo,
         category_id: ('category_id' in body ? categoryId : prev.category_id) as '01' | '02',
@@ -560,6 +563,7 @@ export default function EventDetailPage() {
               ))}
             </div>
           </div>
+          <p className="text-xs text-zinc-500 mt-1.5">イベント名の英数字・記号は全角で入力しても保存時に自動的に半角に変換されます</p>
         </section>
 
         {/* 地方 */}

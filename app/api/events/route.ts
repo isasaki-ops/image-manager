@@ -4,6 +4,7 @@ import { generateKeywordsFromEventName, generateEmbedding } from '@/lib/ai'
 import { searchEvents, buildRegionOrFilter } from '@/lib/search'
 import { applyImageOrder } from '@/lib/imageOrder'
 import { isValidRegionId, parseRegionParam } from '@/lib/regions'
+import { toHalfWidthAlnumSymbols } from '@/lib/textNormalize'
 
 const PAGE_SIZE = 40
 
@@ -91,20 +92,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // イベント名の英数字・記号は半角に統一する
+    const normalizedName = toHalfWidthAlnumSymbols(name.trim())
+
     // Generate keywords if not provided
     let keywords = keywordsInput?.trim() || null
     if (!keywords) {
-      keywords = (await generateKeywordsFromEventName(name.trim())) || null
+      keywords = (await generateKeywordsFromEventName(normalizedName)) || null
     }
 
-    const searchText = [name.trim(), keywords].filter(Boolean).join('\n')
+    const searchText = [normalizedName, keywords].filter(Boolean).join('\n')
     const embedding = await generateEmbedding(searchText)
 
     const { data: event, error } = await getSupabaseAdmin()
       .from('events')
       .insert({
         category_id,
-        name: name.trim(),
+        name: normalizedName,
         keywords,
         memo: memo?.trim() || null,
         search_text: searchText,

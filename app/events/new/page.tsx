@@ -109,6 +109,7 @@ export default function NewEventPage() {
           <div>
             <label className="block text-sm font-medium text-zinc-300 mb-1">
               イベント名 <span className="text-fuchsia-400">*</span>
+              <span className="text-xs text-zinc-500 ml-2">（英数字・記号は全角で入力しても自動的に半角に変換されます）</span>
             </label>
             <input
               type="text"
