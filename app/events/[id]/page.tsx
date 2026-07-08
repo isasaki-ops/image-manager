@@ -773,21 +773,21 @@ export default function EventDetailPage() {
 
       {/* スティッキー保存バー */}
       {isDirty && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-black border-t border-cyan-400/60 shadow-[0_0_30px_rgba(34,211,238,0.3)]">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-amber-400 border-t-4 border-amber-200 shadow-[0_0_40px_rgba(251,191,36,0.7)]">
           <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-            <p className="text-sm text-amber-300 font-semibold">⚠ 未保存の変更があります</p>
+            <p className="text-sm text-black font-bold">⚠ 未保存の変更があります</p>
             <div className="flex gap-3">
               <button
                 onClick={handleReset}
                 disabled={saving}
-                className="text-sm px-4 py-2 text-zinc-400 hover:text-white disabled:opacity-40 transition-colors"
+                className="text-sm px-4 py-2 text-black/70 hover:text-black disabled:opacity-40 transition-colors font-medium"
               >
                 変更を破棄
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="text-sm px-8 py-2.5 bg-black text-cyan-300 border border-cyan-400 rounded-lg hover:bg-cyan-400 hover:text-black disabled:opacity-50 font-bold shadow-[0_0_18px_rgba(34,211,238,0.6)] hover:shadow-[0_0_28px_rgba(34,211,238,0.9)] transition-all"
+                className="text-sm px-8 py-2.5 bg-black text-amber-300 border border-black rounded-lg hover:bg-zinc-900 disabled:opacity-50 font-bold shadow-[0_0_18px_rgba(0,0,0,0.5)] transition-all"
               >
                 {saving ? '保存中…' : '保存する'}
               </button>
