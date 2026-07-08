@@ -18,12 +18,18 @@ const CATEGORY_CARD_BORDER: Record<string, string> = {
   '02': 'border-fuchsia-400/50 shadow-[0_0_14px_rgba(217,70,239,0.18)] hover:shadow-[0_0_26px_rgba(217,70,239,0.45)] hover:border-fuchsia-400',
 }
 
-export default function EventCard({ event }: { event: EventWithStats }) {
+export default function EventCard({
+  event,
+  onClick,
+}: {
+  event: EventWithStats
+  onClick?: () => void
+}) {
   const regionIds = event.region_ids ?? []
   const isNationwide = regionIds.length >= ALL_REGION_IDS.length
 
   return (
-    <Link href={`/events/${event.id}`} className="block group">
+    <Link href={`/events/${event.id}`} className="block group" onClick={onClick}>
       <div className={`bg-zinc-950 rounded-2xl border overflow-hidden hover:-translate-y-0.5 transition-all duration-200 ${CATEGORY_CARD_BORDER[event.category_id] ?? 'border-zinc-700 shadow-none hover:border-zinc-500'}`}>
         {/* Preview image */}
         <div className="w-full h-36 bg-zinc-900 overflow-hidden flex items-center justify-center">

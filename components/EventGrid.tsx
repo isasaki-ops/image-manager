@@ -1,7 +1,13 @@
 import EventCard from './EventCard'
 import type { EventWithStats } from '@/lib/supabase'
 
-export default function EventGrid({ events }: { events: EventWithStats[] }) {
+export default function EventGrid({
+  events,
+  onCardClick,
+}: {
+  events: EventWithStats[]
+  onCardClick?: () => void
+}) {
   if (events.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-zinc-600 gap-3">
@@ -17,7 +23,7 @@ export default function EventGrid({ events }: { events: EventWithStats[] }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
       {events.map((event) => (
-        <EventCard key={event.id} event={event} />
+        <EventCard key={event.id} event={event} onClick={onCardClick} />
       ))}
     </div>
   )

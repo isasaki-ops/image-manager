@@ -329,6 +329,12 @@ export default function EventDetailPage() {
 
   useEffect(() => { fetchEvent() }, [fetchEvent])
 
+  // Next.jsのLinkはデフォルトで遷移元のスクロール位置を維持しようとするため、
+  // 詳細ページは常に最上部から表示されるよう明示的にスクロールする
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [id])
+
   const isDirty = event !== null && (
     nameValue.trim() !== (event.name ?? '') ||
     keywords !== (event.keywords ?? '') ||

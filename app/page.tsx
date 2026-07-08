@@ -130,8 +130,80 @@ export default function HomePage() {
     }
   }, [hasMore, offset, catFilter, regionFilter, isSearchMode])
 
+  const restoreScroll = (y: number) => {
+    // レイアウト確定後にスクロールするため2フレーム待つ
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.scrollTo(0, y))
+    })
+  }
+
+  // 保存されたoffset分をページ単位で再取得し、無限スクロールの続きから復元する
+  const restoreInfiniteScroll = async (targetOffset: number, scrollY: number) => {
+    fetchInFlightRef.current = true
+    setIsLoading(true)
+    try {
+      const categoryParam = buildCategoryParam(catFilter)
+      const regionParam = buildRegionParam(regionFilter)
+      const filterSuffix =
+        (categoryParam ? `&category=${categoryParam}` : '') +
+        (regionParam ? `&region=${encodeURIComponent(regionParam)}` : '')
+      const collected: EventWithStats[] = []
+      let more = false
+      const total = Math.max(PAGE_SIZE, targetOffset)
+      for (let off = 0; off < total; off += PAGE_SIZE) {
+        const res = await fetch(`/api/events?offset=${off}${filterSuffix}`)
+        const data = await res.json()
+        const evts: EventWithStats[] = data.events ?? []
+        collected.push(...evts)
+        more = data.hasMore ?? false
+        if (evts.length < PAGE_SIZE) break
+      }
+      setEvents(collected)
+      setOffset(collected.length)
+      setHasMore(more)
+      restoreScroll(scrollY)
+    } catch {
+      setEvents([])
+    } finally {
+      setIsLoading(false)
+      fetchInFlightRef.current = false
+    }
+  }
+
+  // カード詳細から「戻る」で復元できるよう、離脱時の読み込み件数とスクロール位置を保存する
+  const saveScrollState = () => {
+    if (typeof window === 'undefined') return
+    try {
+      sessionStorage.setItem('topScrollState', JSON.stringify({
+        url: window.location.pathname + window.location.search,
+        offset,
+        scrollY: window.scrollY,
+      }))
+    } catch { /* ignore */ }
+  }
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchEvents(initialQuery) }, [])
+  useEffect(() => {
+    let cached: { url: string; offset: number; scrollY: number } | null = null
+    try {
+      const raw = sessionStorage.getItem('topScrollState')
+      if (raw) cached = JSON.parse(raw)
+    } catch { /* ignore */ }
+
+    const currentUrl = window.location.pathname + window.location.search
+    if (!cached || cached.url !== currentUrl) {
+      fetchEvents(initialQuery)
+      return
+    }
+    sessionStorage.removeItem('topScrollState')
+
+    if (initialQuery) {
+      fetchEvents(initialQuery).then(() => restoreScroll(cached!.scrollY))
+      return
+    }
+
+    restoreInfiniteScroll(cached.offset, cached.scrollY)
+  }, [])
 
   useEffect(() => {
     const handlePopState = () => {
@@ -303,7 +375,7 @@ export default function HomePage() {
         )}
         {/* sentinelはローディング中もDOMに残し、IntersectionObserverの監視対象を維持する */}
         <div className={isLoading ? 'hidden' : ''}>
-          <EventGrid events={events} />
+          <EventGrid events={events} onCardClick={saveScrollState} />
           {isLoadingMore && (
             <div className="flex justify-center py-6">
               <div className="w-6 h-6 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin shadow-[0_0_12px_rgba(34,211,238,0.6)]" />
