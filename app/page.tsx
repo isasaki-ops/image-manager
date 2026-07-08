@@ -5,7 +5,7 @@ import Link from 'next/link'
 import SearchBox from '@/components/SearchBox'
 import EventGrid from '@/components/EventGrid'
 import type { EventWithStats } from '@/lib/supabase'
-import { REGION_FILTER_OPTIONS, ALL_REGION_FILTER_IDS, isValidRegionFilterId } from '@/lib/regions'
+import { REGIONS, ALL_REGION_IDS, isValidRegionId, NONE_REGION_PARAM } from '@/lib/regions'
 
 const PAGE_SIZE = 40
 const CATEGORIES = [
@@ -21,9 +21,10 @@ const parseCatFilter = (sp: URLSearchParams): Set<string> => {
 
 const parseRegionFilter = (sp: URLSearchParams): Set<string> => {
   const region = sp.get('region')
-  if (!region) return new Set(ALL_REGION_FILTER_IDS)
-  const ids = region.split(',').filter(isValidRegionFilterId)
-  return ids.length > 0 ? new Set(ids) : new Set(ALL_REGION_FILTER_IDS)
+  if (!region) return new Set(ALL_REGION_IDS)
+  if (region === NONE_REGION_PARAM) return new Set()
+  const ids = region.split(',').filter(isValidRegionId)
+  return ids.length > 0 ? new Set(ids) : new Set(ALL_REGION_IDS)
 }
 
 export default function HomePage() {
@@ -38,7 +39,7 @@ export default function HomePage() {
     () => (typeof window !== 'undefined' ? parseCatFilter(new URLSearchParams(window.location.search)) : new Set(['01', '02']))
   )
   const [regionFilter, setRegionFilter] = useState<Set<string>>(
-    () => (typeof window !== 'undefined' ? parseRegionFilter(new URLSearchParams(window.location.search)) : new Set(ALL_REGION_FILTER_IDS))
+    () => (typeof window !== 'undefined' ? parseRegionFilter(new URLSearchParams(window.location.search)) : new Set(ALL_REGION_IDS))
   )
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
   const [regionCounts, setRegionCounts] = useState<Record<string, number>>({})
@@ -56,8 +57,11 @@ export default function HomePage() {
   const buildCategoryParam = (filter: Set<string>) =>
     filter.size === 1 ? [...filter][0] : undefined
 
-  const buildRegionParam = (filter: Set<string>) =>
-    filter.size > 0 && filter.size < ALL_REGION_FILTER_IDS.length ? [...filter].join(',') : undefined
+  const buildRegionParam = (filter: Set<string>): string | undefined => {
+    if (filter.size === 0) return NONE_REGION_PARAM
+    if (filter.size >= ALL_REGION_IDS.length) return undefined
+    return [...filter].join(',')
+  }
 
   const fetchEvents = useCallback(async (
     query: string,
@@ -140,7 +144,6 @@ export default function HomePage() {
       setCatFilter(filter)
       setRegionFilter(regFilter)
       fetchEvents(q, filter, regFilter)
-      fetchCategoryCounts(regFilter)
       fetchRegionCounts(filter)
     }
     window.addEventListener('popstate', handlePopState)
@@ -148,16 +151,13 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchEvents])
 
-  // カテゴリ件数は「現在選択中の地方」で、地方件数は「現在選択中のカテゴリ」で絞った上で集計する
-  // （もう片方の軸の選択と組み合わせた実際の該当件数を表示するため）
-  const fetchCategoryCounts = useCallback(async (regFilter: Set<string> = regionFilter) => {
-    const regionParam = buildRegionParam(regFilter)
-    const suffix = regionParam ? `?region=${encodeURIComponent(regionParam)}` : ''
+  // カテゴリ件数は地方フィルターに関わらず常に総数。地方件数は「現在選択中のカテゴリ」で絞った上で集計する
+  const fetchCategoryCounts = useCallback(async () => {
     try {
-      const res = await fetch(`/api/events/counts${suffix}`)
+      const res = await fetch('/api/events/counts')
       setCategoryCounts(await res.json())
     } catch { /* ignore */ }
-  }, [regionFilter])
+  }, [])
 
   const fetchRegionCounts = useCallback(async (filter: Set<string> = catFilter) => {
     const categoryParam = buildCategoryParam(filter)
@@ -200,17 +200,13 @@ export default function HomePage() {
     })
   }
 
+  // 地方チェックを全て外した状態は「設定なし」（地方未設定イベント）の絞り込みとして扱う
   const handleRegionToggle = (id: string) => {
     setRegionFilter((prev) => {
       const next = new Set(prev)
-      if (next.has(id)) {
-        if (next.size === 1) return prev // 最低1つは残す
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       fetchEvents(searchQuery, catFilter, next)
-      fetchCategoryCounts(next)
       return next
     })
   }
@@ -272,16 +268,14 @@ export default function HomePage() {
                 className="w-4 h-4 accent-cyan-400"
               />
               <span className="text-sm text-zinc-300">{label}</span>
-              {categoryCounts[id] != null && (
-                <span className="text-xs text-zinc-300">({categoryCounts[id]}件)</span>
-              )}
+              <span className="text-xs text-zinc-300">({categoryCounts[id] ?? 0}件)</span>
             </label>
           ))}
         </div>
 
-        {/* 地方フィルター */}
+        {/* 地方フィルター（全て外すと「設定なし」＝地方未設定イベントの絞り込みになる） */}
         <div className="max-w-7xl mx-auto px-4 pb-3 flex items-center gap-5 flex-wrap">
-          {REGION_FILTER_OPTIONS.map(({ id, label }) => (
+          {REGIONS.map(({ id, label }) => (
             <label key={id} className="flex items-center gap-1.5 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -290,9 +284,7 @@ export default function HomePage() {
                 className="w-4 h-4 accent-cyan-400"
               />
               <span className="text-sm text-zinc-300">{label}</span>
-              {regionCounts[id] != null && (
-                <span className="text-xs text-zinc-300">({regionCounts[id]}件)</span>
-              )}
+              <span className="text-xs text-zinc-300">({regionCounts[id] ?? 0}件)</span>
             </label>
           ))}
         </div>

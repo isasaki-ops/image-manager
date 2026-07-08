@@ -1,18 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
-import { buildRegionOrFilter } from '@/lib/search'
-import { parseRegionParam } from '@/lib/regions'
 
-export async function GET(req: NextRequest) {
+// カテゴリ（取材/来店）の件数は地方フィルター等に左右されない総数を返す
+export async function GET() {
   try {
-    const { searchParams } = new URL(req.url)
-    const { regionIds, includeNoneRegion } = parseRegionParam(searchParams.get('region'))
-
-    let q = getSupabaseAdmin().from('events').select('category_id')
-    const regionOr = buildRegionOrFilter(regionIds, includeNoneRegion)
-    if (regionOr) q = q.or(regionOr)
-
-    const { data, error } = await q
+    const { data, error } = await getSupabaseAdmin().from('events').select('category_id')
 
     if (error) {
       return NextResponse.json({ error: 'Failed to fetch counts' }, { status: 500 })

@@ -19,32 +19,22 @@ export function isValidRegionId(value: string): value is RegionId {
   return (ALL_REGION_IDS as string[]).includes(value)
 }
 
-// 「設定なし」はDBに保存される実タグではなく、region_idsが空のイベントを指す
-// 派生カテゴリ。TOPページの絞り込み・件数表示にのみ使う（登録・編集フォームには出さない）。
-export const NONE_REGION_ID = 'none'
-export const NONE_REGION_LABEL = '設定なし'
+// TOPページの地方フィルターで地方チェックを一つも入れなかった状態を表すURLパラメータ値。
+// DBに保存される実タグではなく、region_idsが空のイベントを指す派生条件。
+export const NONE_REGION_PARAM = 'none'
 
-export const REGION_FILTER_OPTIONS = [
-  ...REGIONS,
-  { id: NONE_REGION_ID, label: NONE_REGION_LABEL },
-] as const
-
-export const ALL_REGION_FILTER_IDS: string[] = REGION_FILTER_OPTIONS.map((r) => r.id)
-
-export function isValidRegionFilterId(value: string): boolean {
-  return ALL_REGION_FILTER_IDS.includes(value)
-}
-
-// `region`クエリパラメータ（カンマ区切り、"none"含む）を解析する。
-// 全件選択時は「絞り込みなし」と同義なので undefined/false を返す。
+// `region`クエリパラメータを解析する。
+// - 未指定 or 全地方指定 → 絞り込みなし（regionIds: undefined）
+// - "none" → 地方が一つも設定されていないイベントのみ
+// - カンマ区切りの地方ID → 該当地方のイベントのみ（OR）
 export function parseRegionParam(
   regionParam: string | null
 ): { regionIds?: string[]; includeNoneRegion: boolean } {
-  const tokens = regionParam ? regionParam.split(',').filter(isValidRegionFilterId) : []
-  const isFiltering = tokens.length > 0 && tokens.length < ALL_REGION_FILTER_IDS.length
-  if (!isFiltering) return { regionIds: undefined, includeNoneRegion: false }
-  return {
-    regionIds: tokens.filter((t) => t !== NONE_REGION_ID),
-    includeNoneRegion: tokens.includes(NONE_REGION_ID),
+  if (!regionParam) return { regionIds: undefined, includeNoneRegion: false }
+  if (regionParam === NONE_REGION_PARAM) return { regionIds: [], includeNoneRegion: true }
+  const ids = regionParam.split(',').filter(isValidRegionId)
+  if (ids.length === 0 || ids.length >= ALL_REGION_IDS.length) {
+    return { regionIds: undefined, includeNoneRegion: false }
   }
+  return { regionIds: ids, includeNoneRegion: false }
 }
