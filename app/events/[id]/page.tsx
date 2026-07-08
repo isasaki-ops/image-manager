@@ -502,8 +502,16 @@ export default function EventDetailPage() {
   const handleDeleteEvent = async () => {
     if (!confirm(`「${event?.name}」を削除しますか？\n（紐づいている画像はイベント未設定になります）`)) return
     const res = await fetch(`/api/events/${id}`, { method: 'DELETE' })
-    if (res.ok) router.push('/')
-    else alert('削除に失敗しました')
+    if (res.ok) {
+      // 検索結果一覧から削除した場合は、その検索結果に戻れるようTOP固定ではなく直前のページへ戻る
+      if (typeof window !== 'undefined' && window.history.length > 1) {
+        router.back()
+      } else {
+        router.push('/')
+      }
+    } else {
+      alert('削除に失敗しました')
+    }
   }
 
   if (isLoading) {
