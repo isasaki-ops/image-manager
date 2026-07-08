@@ -581,14 +581,6 @@ export default function EventDetailPage() {
                 <span className="text-sm text-zinc-200">{label}</span>
               </label>
             ))}
-            <button
-              type="button"
-              onClick={() => setRegionIds([])}
-              disabled={regionIds.length === 0}
-              className="text-xs px-2.5 py-1 bg-black text-zinc-400 border border-zinc-600 rounded-lg hover:border-rose-400 hover:text-rose-300 disabled:opacity-40 disabled:hover:border-zinc-600 disabled:hover:text-zinc-400 transition-all"
-            >
-              全て外す
-            </button>
           </div>
         </section>
 

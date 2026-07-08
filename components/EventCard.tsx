@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import type { EventWithStats } from '@/lib/supabase'
+import { REGION_LABEL, REGION_COLOR, ALL_REGION_IDS, type RegionId } from '@/lib/regions'
 
 const CATEGORY_LABEL: Record<string, string> = { '01': '取材', '02': '来店' }
 const CATEGORY_COLOR: Record<string, string> = {
@@ -18,6 +19,9 @@ const CATEGORY_CARD_BORDER: Record<string, string> = {
 }
 
 export default function EventCard({ event }: { event: EventWithStats }) {
+  const regionIds = event.region_ids ?? []
+  const isNationwide = regionIds.length >= ALL_REGION_IDS.length
+
   return (
     <Link href={`/events/${event.id}`} className="block group">
       <div className={`bg-zinc-950 rounded-2xl border overflow-hidden hover:-translate-y-0.5 transition-all duration-200 ${CATEGORY_CARD_BORDER[event.category_id] ?? 'border-zinc-700 shadow-none hover:border-zinc-500'}`}>
@@ -57,6 +61,24 @@ export default function EventCard({ event }: { event: EventWithStats }) {
           <p className="text-sm font-semibold text-zinc-100 leading-snug line-clamp-2">
             {event.name}
           </p>
+          {regionIds.length > 0 && (
+            <div className="flex flex-wrap gap-1 pt-0.5">
+              {isNationwide ? (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-black text-yellow-300 border border-yellow-400/70 shadow-[0_0_6px_rgba(250,204,21,0.5)]">
+                  🌏 全国
+                </span>
+              ) : (
+                regionIds.map((r) => (
+                  <span
+                    key={r}
+                    className={`text-[10px] font-medium px-1.5 py-0.5 rounded bg-black border ${REGION_COLOR[r as RegionId] ?? 'text-zinc-400 border-zinc-700'}`}
+                  >
+                    {REGION_LABEL[r as RegionId] ?? r}
+                  </span>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
     </Link>

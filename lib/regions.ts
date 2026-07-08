@@ -19,6 +19,16 @@ export function isValidRegionId(value: string): value is RegionId {
   return (ALL_REGION_IDS as string[]).includes(value)
 }
 
+// 地方ごとの識別色（TOPページのイベントカードのタグ表示などで使用）
+export const REGION_COLOR: Record<RegionId, string> = {
+  hokkaido: 'text-slate-100 border-slate-300/60',
+  tohoku: 'text-green-300 border-green-400/60',
+  kanto: 'text-purple-200 border-purple-400/70',
+  tokai: 'text-blue-300 border-blue-400/60',
+  kansai: 'text-orange-300 border-orange-400/60',
+  kyushu: 'text-rose-300 border-rose-400/60',
+}
+
 // TOPページの地方フィルターで地方チェックを一つも入れなかった状態を表すURLパラメータ値。
 // DBに保存される実タグではなく、region_idsが空のイベントを指す派生条件。
 export const NONE_REGION_PARAM = 'none'
