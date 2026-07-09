@@ -4,6 +4,7 @@ import { generateEmbedding, generateKeywordsFromEventName } from '@/lib/ai'
 import { applyImageOrder } from '@/lib/imageOrder'
 import { isValidRegionId } from '@/lib/regions'
 import { toHalfWidthAlnumSymbols } from '@/lib/textNormalize'
+import { deleteFromR2 } from '@/lib/r2'
 
 export async function GET(
   _req: NextRequest,
@@ -99,17 +100,34 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
+    const deleteImages = req.nextUrl.searchParams.get('deleteImages') === 'true'
 
-    // Unlink images (set event_id to NULL)
-    await getSupabaseAdmin()
-      .from('images')
-      .update({ event_id: null })
-      .eq('event_id', id)
+    if (deleteImages) {
+      // 画像も削除: R2上のファイルを削除してからレコードを削除
+      const { data: images } = await getSupabaseAdmin()
+        .from('images')
+        .select('id, r2_key')
+        .eq('event_id', id)
+
+      if (images && images.length > 0) {
+        await Promise.all(images.map((img) => deleteFromR2(img.r2_key)))
+        await getSupabaseAdmin()
+          .from('images')
+          .delete()
+          .eq('event_id', id)
+      }
+    } else {
+      // 画像は削除せず未設定画像一覧に残す (event_id を NULL に)
+      await getSupabaseAdmin()
+        .from('images')
+        .update({ event_id: null })
+        .eq('event_id', id)
+    }
 
     const { error } = await getSupabaseAdmin()
       .from('events')

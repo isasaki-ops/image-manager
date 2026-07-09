@@ -506,8 +506,9 @@ export default function EventDetailPage() {
   }
 
   const handleDeleteEvent = async () => {
-    if (!confirm(`「${event?.name}」を削除しますか？\n（紐づいている画像はイベント未設定になります）`)) return
-    const res = await fetch(`/api/events/${id}`, { method: 'DELETE' })
+    if (!confirm(`「${event?.name}」を削除しますか？`)) return
+    const deleteImages = confirm('紐付いている画像も削除しますか？（削除しない場合は未設定画像一覧に保存されます）')
+    const res = await fetch(`/api/events/${id}?deleteImages=${deleteImages}`, { method: 'DELETE' })
     if (res.ok) {
       // 検索結果一覧から削除した場合は、その検索結果に戻れるようTOP固定ではなく直前のページへ戻る
       if (typeof window !== 'undefined' && window.history.length > 1) {
