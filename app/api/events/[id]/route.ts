@@ -22,7 +22,7 @@ export async function GET(
       applyImageOrder(
         getSupabaseAdmin()
           .from('images')
-          .select('id, event_id, image_type, r2_url, r2_key, file_name, file_size, file_type, image_width, image_height, uploaded_at, sort_order')
+          .select('id, event_id, image_type, r2_url, r2_key, file_name, file_size, file_type, image_width, image_height, uploaded_at, sort_order, wp_file_name, wp_url, wp_registered_at')
           .eq('event_id', id)
       ),
     ])

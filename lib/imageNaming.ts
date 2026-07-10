@@ -5,6 +5,17 @@ export function sanitizeEventNameForFile(eventName: string): string {
   return eventName.trim().replace(/[\\/:*?"<>|]/g, '_') || 'image'
 }
 
+// 取材(01)＝image01_ / 来店(02)＝image02_ / 取材かつイベント名がSS・ｓｓ・ss始まり＝imagess_
+export function resolveFileNamePrefix(categoryId: string | null | undefined, eventName: string | null | undefined): string {
+  if (categoryId === '02') return 'image02_'
+  if (categoryId === '01') {
+    const normalized = (eventName ?? '').normalize('NFKC').trim()
+    if (/^ss/i.test(normalized)) return 'imagess_'
+    return 'image01_'
+  }
+  return 'image_'
+}
+
 export function extFromFileName(fileName: string | null | undefined, fallback = 'jpg'): string {
   if (!fileName || !fileName.includes('.')) return fallback
   return fileName.split('.').pop()!.toLowerCase()
@@ -22,14 +33,21 @@ function nextAvailableName(base: string, suffix: string, ext: string, existing: 
   return candidate
 }
 
-// original: イベント名.jpg, イベント名_2.jpg, ...
-export function buildOriginalFileName(eventName: string, ext: string, existing: Set<string>): string {
-  return nextAvailableName(sanitizeEventNameForFile(eventName), '', ext, existing)
+// original: image01_イベント名.jpg, image01_イベント名_2.jpg, ...
+export function buildOriginalFileName(
+  eventName: string,
+  ext: string,
+  existing: Set<string>,
+  categoryId?: string | null
+): string {
+  const prefix = resolveFileNamePrefix(categoryId, eventName)
+  return nextAvailableName(`${prefix}${sanitizeEventNameForFile(eventName)}`, '', ext, existing)
 }
 
-// thumbnail: イベント名_600x400.jpg, イベント名_600x400_2.jpg, ...
-export function buildThumbFileName(eventName: string, existing: Set<string>): string {
-  return nextAvailableName(sanitizeEventNameForFile(eventName), '_600x400', 'jpg', existing)
+// thumbnail: image01_イベント名_600x400.jpg, image01_イベント名_600x400_2.jpg, ...
+export function buildThumbFileName(eventName: string, existing: Set<string>, categoryId?: string | null): string {
+  const prefix = resolveFileNamePrefix(categoryId, eventName)
+  return nextAvailableName(`${prefix}${sanitizeEventNameForFile(eventName)}`, '_600x400', 'jpg', existing)
 }
 
 // 既存画像をイベント名ベースのファイル名にリネーム（イベント紐付け時に使用）
@@ -42,7 +60,7 @@ export async function renameImageForEvent(imageId: string, eventId: string): Pro
     .single()
   if (!img) return
 
-  const { data: eventRow } = await sb.from('events').select('name').eq('id', eventId).single()
+  const { data: eventRow } = await sb.from('events').select('name, category_id').eq('id', eventId).single()
   if (!eventRow?.name) return
 
   const { data: existingRows } = await sb.from('images').select('file_name').eq('event_id', eventId)
@@ -50,8 +68,8 @@ export async function renameImageForEvent(imageId: string, eventId: string): Pro
 
   const isThumb = img.image_type === '600x400'
   const newFileName = isThumb
-    ? buildThumbFileName(eventRow.name, existing)
-    : buildOriginalFileName(eventRow.name, extFromFileName(img.file_name), existing)
+    ? buildThumbFileName(eventRow.name, existing, eventRow.category_id)
+    : buildOriginalFileName(eventRow.name, extFromFileName(img.file_name), existing, eventRow.category_id)
 
   if (newFileName === img.file_name) return
 

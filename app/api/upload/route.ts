@@ -71,16 +71,18 @@ export async function POST(req: NextRequest) {
 
     // イベント選択済みの場合はイベント名ベースのファイル名を採番する
     let eventName: string | null = null
+    let eventCategoryId: string | null = null
     const existingNames = new Set<string>()
     if (eventId) {
-      const { data: eventRow } = await getSupabaseAdmin().from('events').select('name').eq('id', eventId).single()
+      const { data: eventRow } = await getSupabaseAdmin().from('events').select('name, category_id').eq('id', eventId).single()
       eventName = eventRow?.name ?? null
+      eventCategoryId = eventRow?.category_id ?? null
       if (eventName) {
         const { data: existingRows } = await getSupabaseAdmin().from('images').select('file_name').eq('event_id', eventId)
         for (const r of existingRows ?? []) if (r.file_name) existingNames.add(r.file_name)
       }
     }
-    const originalFileName = eventName ? buildOriginalFileName(eventName, extFromName, existingNames) : originalName
+    const originalFileName = eventName ? buildOriginalFileName(eventName, extFromName, existingNames, eventCategoryId) : originalName
     if (eventName) existingNames.add(originalFileName)
 
     const nextSortOrder = await getNextSortOrder(eventId)
@@ -115,7 +117,7 @@ export async function POST(req: NextRequest) {
         const thumbKey = `${td}_${tt}_${tr}_600x400.jpg`
         const thumbUrl = await uploadToR2(thumbBuffer, thumbKey, 'image/jpeg')
         const baseName = originalName.replace(/\.[^.]+$/, '')
-        const thumbFileName = eventName ? buildThumbFileName(eventName, existingNames) : `${baseName}_600x400.jpg`
+        const thumbFileName = eventName ? buildThumbFileName(eventName, existingNames, eventCategoryId) : `${baseName}_600x400.jpg`
 
         const { data: thumb } = await getSupabaseAdmin()
           .from('images')

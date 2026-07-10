@@ -96,4 +96,7 @@ export type ImageRecord = {
   image_width: number | null
   image_height: number | null
   sort_order?: number | null
+  wp_file_name?: string | null
+  wp_url?: string | null
+  wp_registered_at?: string | null
 }

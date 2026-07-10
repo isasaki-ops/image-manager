@@ -5,17 +5,6 @@ const WP_API = process.env.WP_URL
   ? `${process.env.WP_URL.replace(/\/$/, '')}/wp-json/wp/v2/media`
   : 'https://hisshobon-hall.info/wp-json/wp/v2/media'
 
-// 取材(01)＝image01_ / 来店(02)＝image02_ / 取材かつイベント名がSS・ｓｓ・ss始まり＝imagess_
-function resolveFileNamePrefix(categoryId: string | null | undefined, eventName: string | null | undefined): string {
-  if (categoryId === '02') return 'image02_'
-  if (categoryId === '01') {
-    const normalized = (eventName ?? '').normalize('NFKC').trim()
-    if (/^ss/i.test(normalized)) return 'imagess_'
-    return 'image01_'
-  }
-  return 'image_'
-}
-
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -32,10 +21,10 @@ export async function POST(
       )
     }
 
-    // 画像レコードを取得（紐づくイベントのカテゴリ・名前も合わせて取得）
+    // 画像レコードを取得
     const { data: img, error } = await getSupabaseAdmin()
       .from('images')
-      .select('id, r2_url, file_name, file_type, events(category_id, name)')
+      .select('id, r2_url, file_name, file_type')
       .eq('id', id)
       .single()
 
@@ -51,11 +40,8 @@ export async function POST(
     const imageBuffer = await r2Res.arrayBuffer()
     const contentType = img.file_type ?? r2Res.headers.get('content-type') ?? 'image/jpeg'
 
-    // ファイル名（カテゴリ・イベント名に応じたプレフィックスを付けてWPに送る）
-    const event = Array.isArray(img.events) ? img.events[0] : img.events
-    const prefix = resolveFileNamePrefix(event?.category_id, event?.name)
-    const baseFileName = img.file_name ?? `${id}.jpg`
-    const fileName = `${prefix}${baseFileName}`
+    // ファイル名はそのまま使用（image01_ 等のプレフィックスはイベント紐付け時点で付与済み）
+    const fileName = img.file_name ?? `${id}.jpg`
 
     // WPにアップロード
     // 生バイナリ+Content-Dispositionヘッダー方式だと、WordPress側がRFC 5987の
@@ -83,10 +69,19 @@ export async function POST(
     }
 
     const wpData = await wpRes.json()
+    const wpFileName = wpData.source_url ? decodeURIComponent(wpData.source_url.split('/').pop()) : fileName
+    const now = new Date().toISOString()
+
+    await getSupabaseAdmin()
+      .from('images')
+      .update({ wp_file_name: wpFileName, wp_url: wpData.source_url, wp_registered_at: now, updated_at: now })
+      .eq('id', id)
+
     return NextResponse.json({
       wp_id: wpData.id,
       wp_url: wpData.source_url,
       wp_title: wpData.title?.rendered ?? fileName,
+      wp_file_name: wpFileName,
     })
   } catch (err) {
     console.error('[wp-upload] error:', err)

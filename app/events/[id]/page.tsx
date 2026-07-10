@@ -57,7 +57,8 @@ function ImageThumb({
   const [deleting, setDeleting] = useState(false)
   const [unlinking, setUnlinking] = useState(false)
   const [wpUploading, setWpUploading] = useState(false)
-  const [wpDone, setWpDone] = useState(false)
+  const [wpDone, setWpDone] = useState(!!img.wp_registered_at)
+  const [wpFileName, setWpFileName] = useState<string | null>(img.wp_file_name ?? null)
   const [copied, setCopied] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState(img.file_name ?? '')
@@ -131,15 +132,19 @@ function ImageThumb({
   }
 
   const handleWpUpload = async () => {
+    if (!isAlready600x400) {
+      alert('WP登録は600×400サイズのみです')
+      return
+    }
     if (wpDone && !confirm('すでにWPに登録済みです。再アップロードしますか？')) return
-    if (!isAlready600x400 && !confirm('注意！600×400サイズではありません。アップロードしていいですか？')) return
-    if (!confirm('ファイル名の先頭に image_ を付けてアップロードします。よろしいですか？')) return
+    if (!confirm(`「${img.file_name ?? ''}」のファイル名でWPにアップロードします。よろしいですか？`)) return
     setWpUploading(true)
     try {
       const res = await fetch(`/api/images/${img.id}/wp-upload`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'WP登録に失敗しました')
       setWpDone(true)
+      setWpFileName(data.wp_file_name ?? null)
       alert(`WP登録完了\n${data.wp_url}`)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'WP登録に失敗しました')
@@ -230,6 +235,11 @@ function ImageThumb({
       {img.r2_url && (
         <p className="text-xs text-zinc-400 truncate font-mono" title={img.r2_url}>{img.r2_url}</p>
       )}
+      {wpFileName && (
+        <p className="text-xs text-violet-300 truncate font-mono" title={`WP登録ファイル名: ${wpFileName}`}>
+          WP: {wpFileName}
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-1.5">
         <a
           href={`/api/images/${img.id}/download`}
@@ -259,7 +269,12 @@ function ImageThumb({
         <button
           onClick={handleWpUpload}
           disabled={wpUploading}
-          className="text-xs py-1.5 bg-black text-violet-300 border border-violet-400/70 font-medium rounded-lg shadow-[0_0_8px_rgba(167,139,250,0.35)] hover:bg-violet-400 hover:text-black hover:shadow-[0_0_14px_rgba(167,139,250,0.8)] disabled:opacity-50 transition-all"
+          title={!isAlready600x400 ? 'WP登録は600×400サイズのみです' : undefined}
+          className={
+            isAlready600x400
+              ? 'text-xs py-1.5 bg-black text-violet-300 border border-violet-400/70 font-medium rounded-lg shadow-[0_0_8px_rgba(167,139,250,0.35)] hover:bg-violet-400 hover:text-black hover:shadow-[0_0_14px_rgba(167,139,250,0.8)] disabled:opacity-50 transition-all'
+              : 'text-xs py-1.5 bg-zinc-900 text-zinc-600 border border-zinc-800 rounded-lg cursor-not-allowed'
+          }
         >
           {wpUploading ? '登録中…' : wpDone ? 'WP登録済' : 'WP登録'}
         </button>
