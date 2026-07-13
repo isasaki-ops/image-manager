@@ -5,7 +5,7 @@ import Link from 'next/link'
 import SearchBox from '@/components/SearchBox'
 import EventGrid from '@/components/EventGrid'
 import type { EventWithStats } from '@/lib/supabase'
-import { REGIONS, ALL_REGION_IDS, isValidRegionId, NONE_REGION_PARAM } from '@/lib/regions'
+import { REGION_OPTIONS, ALL_REGION_IDS, isValidRegionId, NONE_REGION_PARAM } from '@/lib/regions'
 
 const PAGE_SIZE = 40
 const CATEGORIES = [
@@ -22,9 +22,8 @@ const parseCatFilter = (sp: URLSearchParams): Set<string> => {
 const parseRegionFilter = (sp: URLSearchParams): Set<string> => {
   const region = sp.get('region')
   if (!region) return new Set(ALL_REGION_IDS)
-  if (region === NONE_REGION_PARAM) return new Set()
-  const ids = region.split(',').filter(isValidRegionId)
-  return ids.length > 0 ? new Set(ids) : new Set(ALL_REGION_IDS)
+  const tokens = region.split(',').filter((t) => isValidRegionId(t) || t === NONE_REGION_PARAM)
+  return tokens.length > 0 ? new Set(tokens) : new Set(ALL_REGION_IDS)
 }
 
 export default function HomePage() {
@@ -58,8 +57,10 @@ export default function HomePage() {
     filter.size === 1 ? [...filter][0] : undefined
 
   const buildRegionParam = (filter: Set<string>): string | undefined => {
-    if (filter.size === 0) return NONE_REGION_PARAM
-    if (filter.size >= ALL_REGION_IDS.length) return undefined
+    const realSelected = [...filter].filter((id) => id !== NONE_REGION_PARAM)
+    const noneSelected = filter.has(NONE_REGION_PARAM)
+    if (realSelected.length >= ALL_REGION_IDS.length) return undefined // 全地方選択＝絞り込みなし
+    if (realSelected.length === 0 && !noneSelected) return undefined // 全解除＝絞り込みなし
     return [...filter].join(',')
   }
 
@@ -272,7 +273,7 @@ export default function HomePage() {
     })
   }
 
-  // 地方チェックを全て外した状態は「設定なし」（地方未設定イベント）の絞り込みとして扱う
+  // 地方チェックを全て外した状態は絞り込みなし（全件表示）。「設定なし」は末尾の専用チェックボックスで絞り込む
   const handleRegionToggle = (id: string) => {
     setRegionFilter((prev) => {
       const next = new Set(prev)
@@ -345,9 +346,9 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* 地方フィルター（全て外すと「設定なし」＝地方未設定イベントの絞り込みになる） */}
+        {/* 地方フィルター（全て外すと絞り込みなし＝全件表示。「設定なし」は専用チェックボックスで絞り込む） */}
         <div className="max-w-7xl mx-auto px-4 pb-3 flex items-center gap-5 flex-wrap">
-          {REGIONS.map(({ id, label }) => (
+          {REGION_OPTIONS.map(({ id, label }) => (
             <label key={id} className="flex items-center gap-1.5 cursor-pointer select-none">
               <input
                 type="checkbox"

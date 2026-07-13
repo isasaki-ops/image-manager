@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { NONE_REGION_PARAM } from '@/lib/regions'
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,12 +17,15 @@ export async function GET(req: NextRequest) {
     }
 
     const counts: Record<string, number> = {}
+    let noneCount = 0
     for (const row of data ?? []) {
       const ids = (row.region_ids as string[]) ?? []
+      if (ids.length === 0) noneCount++
       for (const id of ids) {
         counts[id] = (counts[id] ?? 0) + 1
       }
     }
+    counts[NONE_REGION_PARAM] = noneCount
 
     return NextResponse.json(counts)
   } catch (err) {

@@ -29,22 +29,26 @@ export const REGION_COLOR: Record<RegionId, string> = {
   kyushu: 'text-rose-300 border-rose-400/60',
 }
 
-// TOPページの地方フィルターで地方チェックを一つも入れなかった状態を表すURLパラメータ値。
+// TOPページの地方フィルターに「設定なし」チェックボックスとして表示する専用ID。
 // DBに保存される実タグではなく、region_idsが空のイベントを指す派生条件。
 export const NONE_REGION_PARAM = 'none'
 
+// 6地方に「設定なし」を加えた、TOPページのチェックボックス表示用リスト
+export const REGION_OPTIONS = [...REGIONS, { id: NONE_REGION_PARAM, label: '設定なし' }] as const
+
 // `region`クエリパラメータを解析する。
-// - 未指定 or 全地方指定 → 絞り込みなし（regionIds: undefined）
-// - "none" → 地方が一つも設定されていないイベントのみ
+// - 未指定、または地方チェックを一つも入れていない状態 → 絞り込みなし（regionIds: undefined）
+// - 全地方指定 → 絞り込みなし（regionIds: undefined）
+// - "none" を含む → 地方が一つも設定されていないイベントも対象に含める
 // - カンマ区切りの地方ID → 該当地方のイベントのみ（OR）
 export function parseRegionParam(
   regionParam: string | null
 ): { regionIds?: string[]; includeNoneRegion: boolean } {
   if (!regionParam) return { regionIds: undefined, includeNoneRegion: false }
-  if (regionParam === NONE_REGION_PARAM) return { regionIds: [], includeNoneRegion: true }
-  const ids = regionParam.split(',').filter(isValidRegionId)
-  if (ids.length === 0 || ids.length >= ALL_REGION_IDS.length) {
-    return { regionIds: undefined, includeNoneRegion: false }
-  }
-  return { regionIds: ids, includeNoneRegion: false }
+  const tokens = regionParam.split(',')
+  const includeNoneRegion = tokens.includes(NONE_REGION_PARAM)
+  const ids = tokens.filter(isValidRegionId)
+  if (ids.length >= ALL_REGION_IDS.length) return { regionIds: undefined, includeNoneRegion: false }
+  if (ids.length === 0 && !includeNoneRegion) return { regionIds: undefined, includeNoneRegion: false }
+  return { regionIds: ids, includeNoneRegion }
 }
