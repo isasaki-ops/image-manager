@@ -32,6 +32,20 @@ export default function NewEventPage() {
     setError('')
 
     try {
+      const dupRes = await fetch(`/api/events/check-duplicate?name=${encodeURIComponent(name.trim())}`)
+      const dupData = await dupRes.json()
+      const duplicates: { event_code: string; name: string }[] = dupData.events ?? []
+      if (duplicates.length > 0) {
+        const list = duplicates.map((e) => `${e.event_code} ${e.name}`).join('\n')
+        const proceed = window.confirm(
+          `同じ名前のイベントが既に登録されています。\n${list}\n\nこのまま登録しますか？`
+        )
+        if (!proceed) {
+          setIsSubmitting(false)
+          return
+        }
+      }
+
       const res = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
