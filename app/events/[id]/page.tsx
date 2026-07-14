@@ -268,12 +268,14 @@ function ImageThumb({
         </button>
         <button
           onClick={handleWpUpload}
-          disabled={wpUploading}
-          title={!isAlready600x400 ? 'WP登録は600×400サイズのみです' : undefined}
+          disabled={wpUploading || wpDone || !isAlready600x400}
+          title={wpDone ? 'WP登録済みです' : !isAlready600x400 ? 'WP登録は600×400サイズのみです' : undefined}
           className={
-            isAlready600x400
-              ? 'text-xs py-1.5 bg-black text-violet-300 border border-violet-400/70 font-medium rounded-lg shadow-[0_0_8px_rgba(167,139,250,0.35)] hover:bg-violet-400 hover:text-black hover:shadow-[0_0_14px_rgba(167,139,250,0.8)] disabled:opacity-50 transition-all'
-              : 'text-xs py-1.5 bg-zinc-900 text-zinc-600 border border-zinc-800 rounded-lg cursor-not-allowed'
+            wpDone
+              ? 'text-xs py-1.5 bg-zinc-900 text-zinc-600 border border-zinc-800 rounded-lg cursor-not-allowed'
+              : isAlready600x400
+                ? 'text-xs py-1.5 bg-black text-violet-300 border border-violet-400/70 font-medium rounded-lg shadow-[0_0_8px_rgba(167,139,250,0.35)] hover:bg-violet-400 hover:text-black hover:shadow-[0_0_14px_rgba(167,139,250,0.8)] disabled:opacity-50 transition-all'
+                : 'text-xs py-1.5 bg-zinc-900 text-zinc-600 border border-zinc-800 rounded-lg cursor-not-allowed'
           }
         >
           {wpUploading ? '登録中…' : wpDone ? 'WP登録済' : 'WP登録'}
