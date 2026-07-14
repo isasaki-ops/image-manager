@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>技術スタック横断調査レポート（実行者：佐々木一徹 / isasaki-ops）</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #161d2e;
+    --panel2: #1d2740;
+    --border: #2a3550;
+    --text: #e6ebf5;
+    --sub: #9aa7c2;
+    --accent: #5b9dff;
+    --ok: #3ecf8e;
+    --warn: #f2b544;
+    --bad: #f2545b;
+    --mono: "Consolas", "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 80px; }
+  header { margin-bottom: 28px; }
+  header h1 { font-size: 1.5rem; margin: 0 0 6px; }
+  header p { color: var(--sub); margin: 2px 0; font-size: 0.92rem; }
+
+  section { margin-top: 40px; }
+  h2 {
+    font-size: 1.15rem;
+    border-left: 4px solid var(--accent);
+    padding-left: 10px;
+    margin-bottom: 16px;
+  }
+  h3 { font-size: 1rem; color: var(--sub); margin: 18px 0 8px; }
+
+  /* サマリー */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .stat-card .num { font-size: 1.9rem; font-weight: 700; }
+  .stat-card .num small { font-size: 1rem; color: var(--sub); font-weight: 400; }
+  .stat-card .label { color: var(--sub); font-size: 0.82rem; margin-top: 4px; }
+  .stat-card.ok .num { color: var(--ok); }
+  .stat-card.warn .num { color: var(--warn); }
+  .stat-card.bad .num { color: var(--bad); }
+
+  /* カード比較図 */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 14px;
+  }
+  .proj-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    position: relative;
+  }
+  .proj-card h4 { margin: 0 0 8px; font-size: 0.98rem; }
+  .proj-card .repo { color: var(--sub); font-size: 0.75rem; font-family: var(--mono); margin-bottom: 10px; word-break: break-all; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+  .tag {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--sub);
+    white-space: nowrap;
+  }
+  .tag.stack { color: var(--accent); border-color: #33456e; }
+  .tag.risk-bad { color: var(--bad); border-color: #5c2a2c; background: #2a1417; }
+  .tag.risk-warn { color: var(--warn); border-color: #5c4a1f; background: #2a2214; }
+  .tag.risk-ok { color: var(--ok); border-color: #1f5c40; background: #12241c; }
+
+  /* 同一スタック凡例 */
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; font-size: 0.82rem; color: var(--sub); }
+  .legend span.dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }
+
+  /* テーブル共通 */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; min-width: 900px; font-size: 0.85rem; }
+  thead th {
+    background: var(--panel2);
+    text-align: left;
+    padding: 10px 12px;
+    color: var(--sub);
+    font-weight: 600;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(91,157,255,0.04); }
+  td.proj-name { font-weight: 600; white-space: nowrap; }
+  td.proj-name small { display:block; font-weight:400; color: var(--sub); font-size:0.72rem; }
+
+  .cell-bad { background: rgba(242,84,91,0.14); color: #ffb3b6; font-weight: 600; }
+  .cell-warn { background: rgba(242,181,68,0.14); color: #ffd98a; font-weight: 600; }
+  .cell-ok { color: var(--ok); }
+  .cell-na { color: var(--sub); font-style: italic; }
+
+  /* 新旧グルーピング */
+  .group-box {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+  }
+  .group-box.new { border-left: 4px solid var(--accent); }
+  .group-box.old { border-left: 4px solid var(--sub); }
+  .group-box h4 { margin: 0 0 8px; }
+  .group-box ul { margin: 6px 0 0; padding-left: 20px; }
+  .group-box li { margin-bottom: 4px; }
+
+  footer.notes {
+    margin-top: 40px;
+    font-size: 0.78rem;
+    color: var(--sub);
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+  footer.notes ul { padding-left: 20px; }
+  footer.notes code { font-family: var(--mono); background: var(--panel2); padding: 1px 5px; border-radius: 4px; }
+
+  .badge-inline {
+    display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:5px;
+    background: var(--panel2); border:1px solid var(--border); color: var(--sub); margin-left:6px;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f7fb; --panel: #ffffff; --panel2: #eef1f8; --border: #dde3f0;
+      --text: #1b2436; --sub: #5b6786;
+    }
+    tbody tr:hover { background: rgba(91,157,255,0.06); }
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f7fb; --panel: #ffffff; --panel2: #eef1f8; --border: #dde3f0;
+    --text: #1b2436; --sub: #5b6786;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1420; --panel: #161d2e; --panel2: #1d2740; --border: #2a3550;
+    --text: #e6ebf5; --sub: #9aa7c2;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>社内ツール 技術スタック調査レポート</h1>
+  <p>実行者：佐々木一徹（i.sasaki@tatsumipubs.com / GitHub: isasaki-ops）</p>
+  <p>調査日：2026-07-14　調査範囲：<code>C:\dev</code> 配下のローカル開発ディレクトリ、GitHub（<code>gh repo list</code>）、Vercel CLI（<code>vercel whoami</code> / <code>.vercel/project.json</code>）で確認できた範囲</p>
+</header>
+
+<section id="summary">
+  <h2>1. 全体サマリー</h2>
+  <div class="summary-grid">
+    <div class="stat-card">
+      <div class="num">8</div>
+      <div class="label">確認できたプロジェクト数</div>
+    </div>
+    <div class="stat-card ok">
+      <div class="num">6<small>/8</small></div>
+      <div class="label">git管理あり</div>
+    </div>
+    <div class="stat-card warn">
+      <div class="num">4<small>/8</small></div>
+      <div class="label">GitHubリモート接続あり</div>
+    </div>
+    <div class="stat-card bad">
+      <div class="num">2<small>/8</small></div>
+      <div class="label">自動デプロイ（git push契機）</div>
+    </div>
+    <div class="stat-card bad">
+      <div class="num">2<small>/8</small></div>
+      <div class="label">git管理なし（履歴が一切ない）</div>
+    </div>
+    <div class="stat-card warn">
+      <div class="num">2<small>/8</small></div>
+      <div class="label">git管理はあるがリモート未接続（ローカル閉域）</div>
+    </div>
+  </div>
+  <p style="color:var(--sub); font-size:0.85rem; margin-top:14px;">
+    GitHubアカウントはすべて <code>isasaki-ops</code>（個人アカウント／<code>gh api users/isasaki-ops</code>で<code>type: User</code>と確認、Organizationではない）に統一。
+    Vercelも全プロジェクトが同一チーム <code>isasaki-ops-projects</code>（個人アカウントのデフォルトチーム、<code>orgId: team_dYWDYy0KNYoRknGCEJB8x8Kn</code>）に集約されている。
+  </p>
+</section>
+
+<section id="compare">
+  <h2>2. プロジェクトごとの技術構成 比較図</h2>
+  <div class="card-grid">
+
+    <div class="proj-card">
+      <h4>image-manager<span class="badge-inline">本ツール自身</span></h4>
+      <div class="repo">github.com/isasaki-ops/image-manager<br>Vercel: event-manager</div>
+      <div class="tag-row"><span class="tag stack">Next.js 16 / React 19</span><span class="tag stack">TypeScript</span></div>
+      <div class="tag-row"><span class="tag stack">Supabase(PG)</span><span class="tag stack">Cloudflare R2</span></div>
+      <div class="tag-row"><span class="tag risk-ok">GitHub接続</span><span class="tag risk-ok">自動デプロイ</span></div>
+    </div>
+
+    <div class="proj-card">
+      <h4>pachinko-crm</h4>
+      <div class="repo">github.com/isasaki-ops/hall-crm<br>Vercel: pachinko-crm</div>
+      <div class="tag-row"><span class="tag stack">Next.js 16 / React 19</span><span class="tag stack">TypeScript</span></div>
+      <div class="tag-row"><span class="tag stack">Supabase(PG)</span><span class="tag stack">Supabase Auth</span></div>
+      <div class="tag-row"><span class="tag risk-ok">GitHub接続</span><span class="tag risk-warn">未commit変更あり</span></div>
+    </div>
+
+    <div class="proj-card">
+      <h4>paa / pmp-tool<span class="badge-inline">PMPスクレイパー＋管理コンソール</span></h4>
+      <div class="repo">GitHubリモートなし（ローカルgitのみ）<br>Vercel: pmp-tool</div>
+      <div class="tag-row"><span class="tag stack">Python / Flask</span><span class="tag stack">BeautifulSoup</span></div>
+      <div class="tag-row"><span class="tag stack">Supabase(PG)</span></div>
+      <div class="tag-row"><span class="tag risk-bad">GitHub未接続</span><span class="tag risk-warn">手動vercel deploy推定</span></div>
+    </div>
+
+    <div class="proj-card">
+      <h4>god-lp<span class="badge-inline">イベントLP：悪魔が来たりて／ヘヴィメダル</span></h4>
+      <div class="repo">github.com/isasaki-ops/hm-lp<br>Xserver（FTP手動デプロイ）</div>
+      <div class="tag-row"><span class="tag stack">静的HTML/CSS/JS</span><span class="tag stack">Node(puppeteer/sharp)</span></div>
+      <div class="tag-row"><span class="tag risk-ok">GitHub接続</span><span class="tag risk-bad">14コミット未push</span><span class="tag risk-warn">手動FTPデプロイ</span></div>
+    </div>
+
+    <div class="proj-card">
+      <h4>scheduled-banner-system<span class="badge-inline">banner-console + WPプラグイン</span></h4>
+      <div class="repo">GitHubなし・.gitすら無い<br>Vercel: banner-console</div>
+      <div class="tag-row"><span class="tag stack">静的Vanilla JS</span><span class="tag stack">WordPress(PHP)</span></div>
+      <div class="tag-row"><span class="tag risk-bad">git管理なし</span><span class="tag risk-warn">WP側はzip手動配布</span></div>
+    </div>
+
+    <div class="proj-card">
+      <h4>pachislot-writer</h4>
+      <div class="repo">github.com/isasaki-ops/pachislot-writer</div>
+      <div class="tag-row"><span class="tag stack">Python</span><span class="tag stack">Tavily Search API</span></div>
+      <div class="tag-row"><span class="tag risk-ok">GitHub接続</span><span class="tag risk-bad">5コミット未push</span></div>
+    </div>
+
+    <div class="proj-card">
+      <h4>banner_generator</h4>
+      <div class="repo">GitHubリモートなし（ローカルgitのみ）</div>
+      <div class="tag-row"><span class="tag stack">Python</span><span class="tag stack">Pillow / psd-tools</span></div>
+      <div class="tag-row"><span class="tag risk-bad">GitHub未接続</span><span class="tag risk-warn">大量の未commit変更</span></div>
+    </div>
+
+    <div class="proj-card">
+      <h4>fuzai<span class="badge-inline">不在通知ボード</span></h4>
+      <div class="repo">バージョン管理なし</div>
+      <div class="tag-row"><span class="tag stack">静的HTML/CSS/JS</span><span class="tag stack">localStorage</span></div>
+      <div class="tag-row"><span class="tag risk-bad">git管理なし</span><span class="tag risk-na">デプロイ先不明</span></div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <div><span class="dot" style="background:var(--accent)"></span>Next.js/React + Supabase 系（image-manager, pachinko-crm）</div>
+    <div><span class="dot" style="background:#c98bff"></span>Python + Vercel + Supabase 系（paa/pmp-tool）</div>
+    <div><span class="dot" style="background:var(--sub)"></span>静的HTML/JS・ノービルド系（god-lp, banner-console, fuzai）</div>
+    <div><span class="dot" style="background:#f2b544"></span>ローカル実行スクリプト系（pachislot-writer, banner_generator）</div>
+  </div>
+</section>
+
+<section id="git-status">
+  <h2>3. バージョン管理・アカウント運用状況の一覧表</h2>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>プロジェクト</th>
+          <th>git管理</th>
+          <th>リモートリポジトリ</th>
+          <th>ブランチ運用</th>
+          <th>GitHubアカウント</th>
+          <th>デプロイ先アカウント</th>
+          <th>未push / 未commit</th>
+          <th>.envの扱い</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="proj-name">image-manager<small>本リポジトリ</small></td>
+          <td class="cell-ok">あり</td>
+          <td>github.com/isasaki-ops/<wbr>image-manager</td>
+          <td>masterのみ・直接コミット</td>
+          <td>個人（isasaki-ops）</td>
+          <td>Vercel: isasaki-ops-projects<br><small>プロジェクト名event-manager</small></td>
+          <td class="cell-ok">origin同期済<br><small>未commitは本調査ファイルのみ</small></td>
+          <td>.gitignoreに<code>.env*</code>あり／<code>.env.local</code>実在／<span class="cell-warn">.env.exampleなし</span></td>
+        </tr>
+        <tr>
+          <td class="proj-name">pachinko-crm</td>
+          <td class="cell-ok">あり</td>
+          <td>github.com/isasaki-ops/<wbr>hall-crm<br><small>※フォルダ名と repo 名が不一致</small></td>
+          <td>masterのみ・直接コミット</td>
+          <td>個人（isasaki-ops）</td>
+          <td>Vercel: isasaki-ops-projects<br><small>プロジェクト名pachinko-crm</small></td>
+          <td class="cell-warn">origin同期済だが未commit変更複数<br><small>CSV出力・修正ファイルなど</small></td>
+          <td>.gitignoreに<code>.env*</code>あり／<code>.env.example</code>完備／<code>.env.local</code>実在</td>
+        </tr>
+        <tr>
+          <td class="proj-name">paa / pmp-tool</td>
+          <td class="cell-ok">あり</td>
+          <td class="cell-bad">未設定<br><small><code>git remote -v</code>が空</small></td>
+          <td>masterのみ</td>
+          <td class="cell-na">該当なし（未接続）</td>
+          <td>Vercel: isasaki-ops-projects<br><small>プロジェクト名pmp-tool</small></td>
+          <td class="cell-bad">全履歴がローカル閉域<br><small>デバッグ用未追跡ファイル多数</small></td>
+          <td><code>.env.local</code>あり（変数名のみ確認）／認証情報は<code>config.json</code>（gitignore済）で別管理</td>
+        </tr>
+        <tr>
+          <td class="proj-name">god-lp<small>GitHub: hm-lp</small></td>
+          <td class="cell-ok">あり</td>
+          <td>github.com/isasaki-ops/<wbr>hm-lp<br><small>※http（非https）で登録</small></td>
+          <td>mainのみ・直接コミット</td>
+          <td>個人（isasaki-ops）</td>
+          <td class="cell-na">Vercel/Supabase不使用<br>Xserver（レンタルサーバー）</td>
+          <td class="cell-bad">origin対比14コミット未push<br><small>+ 未commit変更あり</small></td>
+          <td>.envなし。FTP認証情報は<code>deploy.config.json</code>（gitignore済・追跡対象外を確認）</td>
+        </tr>
+        <tr>
+          <td class="proj-name">scheduled-banner-system</td>
+          <td class="cell-bad">なし<br><small>.gitディレクトリ自体が存在しない</small></td>
+          <td class="cell-na">N/A</td>
+          <td class="cell-na">N/A</td>
+          <td class="cell-na">該当なし</td>
+          <td>banner-consoleはVercel: isasaki-ops-projects<br><small>プロジェクト名banner-console（.vercel/project.jsonで確認）</small></td>
+          <td class="cell-bad">履歴管理そのものが不可能<br><small>デプロイ済みソースの変更履歴を追えない</small></td>
+          <td>環境変数不使用。WP接続情報はブラウザのlocalStorage/sessionStorageに保存（banner-console）</td>
+        </tr>
+        <tr>
+          <td class="proj-name">pachislot-writer</td>
+          <td class="cell-ok">あり</td>
+          <td>github.com/isasaki-ops/<wbr>pachislot-writer</td>
+          <td>mainのみ・直接コミット</td>
+          <td>個人（isasaki-ops）</td>
+          <td class="cell-na">デプロイ対象なし（ローカルCLI実行）</td>
+          <td class="cell-bad">origin対比5コミット未push<br><small>+ 未commit変更1件</small></td>
+          <td>.gitignoreに<code>.env</code>あり／<code>.env</code>・<code>.env.example</code>とも実在</td>
+        </tr>
+        <tr>
+          <td class="proj-name">banner_generator</td>
+          <td class="cell-ok">あり</td>
+          <td class="cell-bad">未設定<br><small><code>git remote -v</code>が空</small></td>
+          <td>mainのみ</td>
+          <td class="cell-na">該当なし（未接続）</td>
+          <td class="cell-na">デプロイ対象なし（ローカルCLI実行）</td>
+          <td class="cell-bad">全履歴がローカル閉域<br><small>未commitの変更・削除が大量</small></td>
+          <td class="cell-warn">.gitignore自体が存在しない</td>
+        </tr>
+        <tr>
+          <td class="proj-name">fuzai<small>不在通知ボード</small></td>
+          <td class="cell-bad">なし</td>
+          <td class="cell-na">N/A</td>
+          <td class="cell-na">N/A</td>
+          <td class="cell-na">該当なし</td>
+          <td class="cell-na">不明<br><small>script.js内コメントよりfile://直開き or<br><code>python -m http.server</code>想定（推測）</small></td>
+          <td class="cell-bad">バージョン管理なし</td>
+          <td>環境変数不使用（localStorage、失敗時はメモリfallback）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="stack-detail">
+  <h2>4. 技術スタック詳細表</h2>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>プロジェクト</th>
+          <th>言語・フレームワーク</th>
+          <th>データベース</th>
+          <th>ホスティング・デプロイ</th>
+          <th>ファイルストレージ</th>
+          <th>認証</th>
+          <th>外部連携</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="proj-name">image-manager</td>
+          <td>TypeScript / Next.js 16.2.9（App Router）/ React 19.2.4</td>
+          <td>Supabase（PostgreSQL）、ORMなし（<code>@supabase/supabase-js</code>直接利用）</td>
+          <td>Vercel、git push契機で自動デプロイ</td>
+          <td>Cloudflare R2（<code>@aws-sdk/client-s3</code>でS3互換API利用）</td>
+          <td>画面ログインなし。外部連携APIは<code>EXPORT_API_KEY</code>によるクエリ文字列キー認証のみ</td>
+          <td>WordPress REST API（画像登録）、Anthropic API、OpenAI API、pachinko-crm向けエクスポートAPI</td>
+        </tr>
+        <tr>
+          <td class="proj-name">pachinko-crm</td>
+          <td>TypeScript / Next.js 16.2.3（App Router）/ React 19.2.4</td>
+          <td>Supabase（PostgreSQL）、ローカル開発はSupabase CLI（<code>supabase/config.toml</code>+<code>migrations</code>）、一部<code>pg</code>直接接続も併用、ORMなし</td>
+          <td>Vercel、プロジェクト名<code>pachinko-crm</code>（自動デプロイと推測、CI設定ファイル未確認）</td>
+          <td>Google Drive API（<code>lib/google-drive.ts</code>）、WordPress（写真登録route）、LINE経由メディアの一時受け渡し</td>
+          <td>Supabase Auth（ログイン／パスワードリセット／招待フローあり、<code>AuthGuard</code>コンポーネントで保護）</td>
+          <td>Anthropic API、Google Drive API、LINE Messaging API、WordPress REST API、image-manager向けエクスポートAPI</td>
+        </tr>
+        <tr>
+          <td class="proj-name">paa / pmp-tool</td>
+          <td>Python / Flask（<code>pmp-console/app.py</code>、Vercel上は<code>@vercel/python</code>で<code>api/index.py</code>経由）</td>
+          <td>Supabase（PostgreSQL、<code>last_data</code>/<code>send_log</code>テーブル。以前のローカルJSON運用からの移行跡あり）</td>
+          <td>Vercel（プロジェクト名<code>pmp-tool</code>）。GitHubリモート未接続のため、CLIから直接<code>vercel deploy</code>している可能性が高い（推測）</td>
+          <td>特になし</td>
+          <td>コンソール自体には認証実装なし（<code>app.py</code>にログイン処理なし）。外部送信先のPMP API（<code>pmp-paa.com</code>）へはBasic認証</td>
+          <td>hisshobon-hall.info（必勝本ホールサイト）のスケジュールページをBeautifulSoupでスクレイピングし、差分をPMP APIへ送信</td>
+        </tr>
+        <tr>
+          <td class="proj-name">god-lp</td>
+          <td>静的HTML/CSS/Vanilla JS（1ページLP）。ビルド補助としてNode.js（puppeteer, sharpでOGP画像生成のみ）</td>
+          <td>なし</td>
+          <td>Xserver（共有レンタルサーバー、<code>sv8084.xserver.jp</code>）へ<code>deploy.py</code>でFTP転送する完全手動デプロイ</td>
+          <td>リポジトリ内に画像ファイルを直接同梱</td>
+          <td>なし（静的LPのため）</td>
+          <td>Google Fonts読み込みのみ。特筆すべき外部APIなし</td>
+        </tr>
+        <tr>
+          <td class="proj-name">scheduled-banner-system</td>
+          <td>banner-console: Vanilla JS（ビルドなし静的サイト）／ scheduled-banner: PHP（WordPressカスタムプラグイン）</td>
+          <td>WordPress本体のMySQL（プラグインが独自テーブル<code>scheduled_banners</code>を作成）</td>
+          <td>banner-consoleはVercel（プロジェクト名<code>banner-console</code>）。scheduled-bannerプラグインは<code>scheduled-banner.zip</code>を手動アップロードしてWordPressにインストール</td>
+          <td>WordPressメディアライブラリの既存画像を参照</td>
+          <td>WordPressアプリケーションパスワード（banner-console側でブラウザに保持し、REST APIへ都度Basic認証）</td>
+          <td>WordPress REST API（カスタムエンドポイント＋CORS対応クラス）</td>
+        </tr>
+        <tr>
+          <td class="proj-name">pachislot-writer</td>
+          <td>Python（<code>requests</code>, <code>python-dotenv</code>）</td>
+          <td>なし</td>
+          <td>なし（ローカルCLIとして実行、記事はWordPressへ直接投稿）</td>
+          <td>ローカルの<code>output/</code>配下に生成記事HTMLを一時保存</td>
+          <td>WordPress REST API向けにアプリケーションパスワード（<code>HTTPBasicAuth</code>）</td>
+          <td>Tavily Search API（<code>search.py</code>で機種情報検索）、WordPress REST API（下書き投稿）</td>
+        </tr>
+        <tr>
+          <td class="proj-name">banner_generator</td>
+          <td>Python（Pillow, psd-tools）</td>
+          <td>なし</td>
+          <td>なし（ローカルCLIとして実行）</td>
+          <td>ローカルの<code>machines/</code>配下にPSD／画像素材を直接格納</td>
+          <td>なし</td>
+          <td>なし</td>
+        </tr>
+        <tr>
+          <td class="proj-name">fuzai</td>
+          <td>静的HTML/CSS/Vanilla JS（単一ページ）</td>
+          <td>ブラウザの<code>localStorage</code>のみ（利用不可時はメモリfallback）</td>
+          <td class="cell-na">不明（推測：<code>script.js</code>コメントよりfile://直開きまたは<code>python -m http.server</code>を想定した簡易ツール）</td>
+          <td>なし</td>
+          <td>なし</td>
+          <td>なし</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="grouping">
+  <h2>5. 構成の新旧グルーピング</h2>
+  <div class="group-box new">
+    <h4>① Vercel + Supabase 系（比較的新しい・共通化しやすい構成）</h4>
+    <ul>
+      <li><strong>image-manager</strong> — Next.js / Supabase / R2、GitHub連携で自動デプロイ済み</li>
+      <li><strong>pachinko-crm</strong> — Next.js / Supabase Auth、GitHub連携済みだが未commit変更が滞留</li>
+      <li><strong>paa / pmp-tool</strong> — Python(Flask) / Supabase だが<strong>GitHubリモート未接続</strong>。技術選定は新しい構成側だが、バージョン管理の運用が伴っていない</li>
+      <li><strong>scheduled-banner-system（banner-console部分）</strong> — Vercelにはデプロイされているが<strong>git管理そのものが存在しない</strong>。新構成の皮を被った最も属人化リスクが高いケース</li>
+    </ul>
+  </div>
+  <div class="group-box old">
+    <h4>② 自前サーバー・手動デプロイ系（従来型・属人化しやすい構成）</h4>
+    <ul>
+      <li><strong>god-lp</strong> — Xserverへの手動FTPデプロイ（<code>deploy.py</code>）。GitHubにはpushしているが14コミット分の遅延あり</li>
+      <li><strong>scheduled-banner-system（scheduled-bannerプラグイン部分）</strong> — zipファイルの手動アップロードで配布、バージョン管理なし</li>
+      <li><strong>pachislot-writer / banner_generator</strong> — ホスティング対象外のローカルCLIツール。デプロイという概念自体がないが、pachislot-writerはGitHub連携ありに対し、banner_generatorはローカルgitのみで<strong>誰にも共有されていない</strong></li>
+      <li><strong>fuzai</strong> — バージョン管理なし、デプロイ先も未確認の最も簡易な構成</li>
+    </ul>
+  </div>
+  <p style="color:var(--sub); font-size:0.85rem;">
+    今後の方針としては、①のVercel + Supabase構成に技術選定は寄っているが、
+    「デプロイ先だけ新しくして git 運用が追いついていない」プロジェクト（paa/pmp-tool、scheduled-banner-system）が最大のリスク。
+    まずはこの2つに<strong>GitHubリモートの設定</strong>を行うことが、属人化解消の優先度が高いと考えられる（本レポート作成者所見・推測）。
+  </p>
+</section>
+
+<footer class="notes">
+  <h3 style="margin-top:0;">出典・確認方法</h3>
+  <ul>
+    <li>各プロジェクトの <code>package.json</code> / <code>requirements.txt</code> / <code>CLAUDE.md</code> / <code>README.md</code> / <code>.gitignore</code> / <code>.env.example</code> を直接読んで確認</li>
+    <li>デプロイ設定は <code>vercel.json</code>、<code>.vercel/project.json</code>、<code>deploy.config.json</code>（god-lp）、<code>scheduled-banner.php</code>のプラグインヘッダーコメントから確認</li>
+    <li>バージョン管理状況は各プロジェクトディレクトリで <code>git remote -v</code> / <code>git branch -a</code> / <code>git log --oneline</code> / <code>git status -sb</code> を実行して確認</li>
+    <li>GitHubアカウント種別は <code>gh auth status</code> と <code>gh api users/isasaki-ops</code>（<code>type: User</code>）で確認、リポジトリ一覧は <code>gh repo list</code> で確認</li>
+    <li>Vercelのチーム・プロジェクト情報は <code>vercel whoami</code> / <code>vercel teams ls</code> および各プロジェクトの <code>.vercel/project.json</code> から確認</li>
+    <li><code>.env</code>系ファイルは存在有無と変数名のみを確認し、値は一切読み取っていない（<code>paa/.env.local</code>: <code>ANTHROPIC_API_KEY</code>, <code>VERCEL_OIDC_TOKEN</code> など、変数名のみ列挙）</li>
+    <li>god-lpの<code>deploy.config.json</code>にはFTP接続情報（ホスト名・ユーザー名・平文パスワード）が含まれることを確認したが、値はこのレポートに一切含めていない。<code>.gitignore</code>対象で追跡されていないことも確認済み</li>
+    <li>pmp-sender関連ファイルにBasic認証情報のサンプル値が記載されていたが、同様に値は非開示としている</li>
+  </ul>
+  <h3>推測で埋めた項目（明示）</h3>
+  <ul>
+    <li>pachinko-crm・paa/pmp-toolのデプロイ自動化の有無は、CI設定ファイルが見つからなかったため「Git連携による自動デプロイの可能性が高い（または低い）」という推測を含む</li>
+    <li>fuzaiのデプロイ先・利用環境は、コード内コメントからの推測であり、実際の運用方法は未確認</li>
+    <li>「今後どちらの方針に統一すべきか」の所見は本調査の推測・意見であり、事実の記述ではない</li>
+  </ul>
+  <p>調査対象を発見した方法：<code>C:\dev</code>配下のディレクトリ探索、<code>gh repo list</code>によるGitHubリポジトリ一覧、Grepによるキーワード横断検索（東北スタッフ申請用ツールのような特定名称のプロジェクトは今回の探索範囲では発見できなかった）。</p>
+</footer>
+
+</div>
+</body>
+</html>
