@@ -98,12 +98,28 @@ export async function GET(request: NextRequest) {
 
     const data = allEvents.flatMap(event => {
       const images = imagesByEvent.get(event.id) ?? []
+      const regionNames = (event.region_ids as RegionId[]).map(r => REGION_LABEL[r] ?? r)
+
+      if (images.length === 0) {
+        return [{
+          event_id: event.id,
+          event_code: event.event_code,
+          event_name: event.name,
+          region_ids: event.region_ids,
+          region_names: regionNames,
+          image_url: '',
+          image_file_name: '',
+          event_updated_at: event.updated_at,
+          image_updated_at: '',
+        }]
+      }
+
       return images.map(img => ({
         event_id: event.id,
         event_code: event.event_code,
         event_name: event.name,
         region_ids: event.region_ids,
-        region_names: (event.region_ids as RegionId[]).map(r => REGION_LABEL[r] ?? r),
+        region_names: regionNames,
         image_url: img.r2_url,
         image_file_name: img.wp_file_name,
         event_updated_at: event.updated_at,
