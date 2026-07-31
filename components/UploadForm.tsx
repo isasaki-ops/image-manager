@@ -43,9 +43,11 @@ export default function UploadForm() {
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
+  const MAX_UPLOAD_BYTES = 4 * 1024 * 1024 // Vercel Functionsのリクエストボディ上限(4.5MB)を下回る値に固定
+
   const handleFile = (f: File) => {
-    if (f.size > 100 * 1024 * 1024) {
-      setErrorMsg('ファイルサイズは100MB以下にしてください')
+    if (f.size > MAX_UPLOAD_BYTES) {
+      setErrorMsg(`ファイルサイズは4MB以下にしてください（${(f.size / 1024 / 1024).toFixed(2)}MB）`)
       return
     }
     setFile(f)
@@ -122,7 +124,12 @@ export default function UploadForm() {
 
     try {
       const res = await fetch('/api/upload', { method: 'POST', body: formData })
-      const data = await res.json()
+      let data: UploadResult & { error?: string }
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error(res.ok ? 'アップロードに失敗しました' : `アップロードに失敗しました（サーバーエラー: ${res.status}）`)
+      }
       if (!res.ok) throw new Error(data.error ?? 'Upload failed')
       setResult(data)
       setProgress('success')
@@ -224,7 +231,7 @@ export default function UploadForm() {
             <div className="text-zinc-300">
               <p className="text-base">ここにドラッグ&ドロップ</p>
               <p className="text-sm mt-1 text-zinc-400">または クリックしてファイルを選択</p>
-              <p className="text-xs mt-2 text-zinc-500">すべてのファイル形式対応（PSD含む）· 最大100MB</p>
+              <p className="text-xs mt-2 text-zinc-500">すべてのファイル形式対応（PSD含む）· 最大4MB</p>
             </div>
           )}
         </div>
