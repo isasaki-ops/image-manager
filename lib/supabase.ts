@@ -80,6 +80,7 @@ export type Event = {
 export type EventWithStats = Event & {
   image_count: number
   preview_url: string | null
+  wp_registered: boolean
 }
 
 export type ImageRecord = {

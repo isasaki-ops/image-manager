@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     const { data: imageData } = await applyImageOrder(
       getSupabaseAdmin()
         .from('images')
-        .select('event_id, r2_url, image_type, uploaded_at, sort_order')
+        .select('event_id, r2_url, image_type, uploaded_at, sort_order, wp_registered_at')
         .in('event_id', eventIds)
     )
 
@@ -66,6 +66,7 @@ export async function GET(req: NextRequest) {
         ...e,
         image_count: imgs.length,
         preview_url: preview?.r2_url ?? null,
+        wp_registered: imgs.some((img) => !!img.wp_registered_at),
       }
     })
 

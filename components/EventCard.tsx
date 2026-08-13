@@ -59,8 +59,14 @@ export default function EventCard({
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLOR[event.category_id] ?? 'bg-zinc-800 text-zinc-400'}`}>
                 {CATEGORY_LABEL[event.category_id] ?? event.category_id}
               </span>
-              <span className="text-xs text-zinc-300">
-                {event.image_count > 0 ? `📷 ${event.image_count}枚` : '画像なし'}
+              <span
+                className={
+                  event.wp_registered
+                    ? 'text-xs font-semibold px-1.5 py-0.5 rounded bg-black text-indigo-300 border border-indigo-400/70 shadow-[0_0_6px_rgba(129,140,248,0.5)]'
+                    : 'text-xs px-1.5 py-0.5 rounded bg-black text-zinc-500 border border-zinc-700'
+                }
+              >
+                {event.wp_registered ? 'WP済' : 'WP未'}
               </span>
             </div>
           </div>
