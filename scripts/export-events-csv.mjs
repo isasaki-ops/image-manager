@@ -9,7 +9,7 @@ import path from 'path'
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 const OUTPUT_CSV = path.join(process.cwd(), 'イベント一覧.csv')
 
-const CATEGORY_LABEL = { '01': '取材', '02': '来店' }
+const CATEGORY_LABEL = { '01': '取材', '02': '来店', '03': '収録' }
 const REGION_LABEL = {
   hokkaido: '北海道',
   tohoku: '東北',

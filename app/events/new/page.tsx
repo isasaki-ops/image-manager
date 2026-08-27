@@ -6,11 +6,12 @@ import Link from 'next/link'
 import BackButton from '@/components/BackButton'
 import CenterPopup from '@/components/CenterPopup'
 import { REGIONS } from '@/lib/regions'
+import { CATEGORY_OPTIONS, type CategoryId } from '@/lib/categories'
 
 export default function NewEventPage() {
   const router = useRouter()
   const [name, setName] = useState('')
-  const [categoryId, setCategoryId] = useState<'01' | '02'>('01')
+  const [categoryId, setCategoryId] = useState<CategoryId>('01')
   const [keywords, setKeywords] = useState('')
   const [memo, setMemo] = useState('')
   const [regionIds, setRegionIds] = useState<string[]>([])
@@ -85,14 +86,14 @@ export default function NewEventPage() {
           <div>
             <label className="block text-sm font-medium text-zinc-300 mb-2">カテゴリ</label>
             <div className="flex gap-4">
-              {([['01', '取材'], ['02', '来店']] as const).map(([val, label]) => (
-                <label key={val} className="flex items-center gap-2 cursor-pointer">
+              {CATEGORY_OPTIONS.map(({ id, label }) => (
+                <label key={id} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
                     name="category"
-                    value={val}
-                    checked={categoryId === val}
-                    onChange={() => setCategoryId(val)}
+                    value={id}
+                    checked={categoryId === id}
+                    onChange={() => setCategoryId(id)}
                     className="accent-cyan-400"
                   />
                   <span className="text-sm text-zinc-200">{label}</span>

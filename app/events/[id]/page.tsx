@@ -8,19 +8,22 @@ import CenterPopup from '@/components/CenterPopup'
 import type { Event, ImageRecord } from '@/lib/supabase'
 import { REGIONS } from '@/lib/regions'
 import { toHalfWidthAlnumSymbols } from '@/lib/textNormalize'
+import { CATEGORY_LABEL, CATEGORY_IDS, type CategoryId } from '@/lib/categories'
 
-const CATEGORY_LABEL: Record<string, string> = { '01': '取材', '02': '来店' }
 const CATEGORY_COLOR: Record<string, string> = {
   '01': 'bg-black text-cyan-300 border border-cyan-400/70',
   '02': 'bg-black text-fuchsia-300 border border-fuchsia-400/70',
+  '03': 'bg-black text-orange-300 border border-orange-400/70',
 }
 const CATEGORY_CODE_COLOR: Record<string, string> = {
   '01': 'text-cyan-300',
   '02': 'text-fuchsia-300',
+  '03': 'text-orange-300',
 }
 const CATEGORY_SECTION_BORDER: Record<string, string> = {
   '01': 'border-cyan-400/50 shadow-[0_0_16px_rgba(34,211,238,0.08)]',
   '02': 'border-fuchsia-400/50 shadow-[0_0_16px_rgba(217,70,239,0.08)]',
+  '03': 'border-orange-400/50 shadow-[0_0_16px_rgba(251,146,60,0.08)]',
 }
 
 function sameRegionIds(a: string[], b: string[]): boolean {
@@ -391,7 +394,9 @@ export default function EventDetailPage() {
         name: normalizedName,
         keywords: 'keywords' in body ? (keywords.trim() || null) : prev.keywords,
         memo: 'memo' in body ? (memo.trim() || null) : prev.memo,
-        category_id: ('category_id' in body ? categoryId : prev.category_id) as '01' | '02',
+        category_id: ('category_id' in body ? categoryId : prev.category_id) as CategoryId,
+        // カテゴリ変更時、event_codeの番号部分はDB側で維持されプレフィックスだけ差し替わる（011マイグレーション）
+        event_code: 'category_id' in body ? `${categoryId}-${prev.event_code.split('-')[1]}` : prev.event_code,
         region_ids: ('region_ids' in body ? regionIds : prev.region_ids),
       } : prev)
       setShowSavedPopup(true)
@@ -580,7 +585,7 @@ export default function EventDetailPage() {
               className="flex-1 min-w-0 bg-zinc-900 border border-zinc-600 rounded-lg px-2 py-1 text-base font-bold text-zinc-100 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.35)]"
             />
             <div className="flex items-center gap-3 shrink-0">
-              {(['01', '02'] as const).map((cid) => (
+              {CATEGORY_IDS.map((cid) => (
                 <label key={cid} className="flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="radio"

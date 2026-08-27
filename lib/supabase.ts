@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import type { CategoryId } from './categories'
 
 // Lazy singletons — created on first call so module evaluation at build time doesn't throw
 let _supabase: SupabaseClient | null = null
@@ -67,7 +68,7 @@ export type SearchResult = {
 export type Event = {
   id: string
   event_code: string
-  category_id: '01' | '02'
+  category_id: CategoryId
   name: string
   keywords: string | null
   memo: string | null

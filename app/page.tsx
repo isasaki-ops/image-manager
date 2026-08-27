@@ -6,17 +6,14 @@ import SearchBox from '@/components/SearchBox'
 import EventGrid from '@/components/EventGrid'
 import type { EventWithStats } from '@/lib/supabase'
 import { REGION_OPTIONS, ALL_REGION_IDS, isValidRegionId, NONE_REGION_PARAM } from '@/lib/regions'
+import { CATEGORY_IDS, CATEGORY_OPTIONS } from '@/lib/categories'
 
 const PAGE_SIZE = 40
-const CATEGORIES = [
-  { id: '01', label: '取材' },
-  { id: '02', label: '来店' },
-] as const
 
 const parseCatFilter = (sp: URLSearchParams): Set<string> => {
   const cat = sp.get('cat')
-  if (cat === '01' || cat === '02') return new Set([cat])
-  return new Set(['01', '02'])
+  if (cat && (CATEGORY_IDS as readonly string[]).includes(cat)) return new Set([cat])
+  return new Set(CATEGORY_IDS)
 }
 
 const parseRegionFilter = (sp: URLSearchParams): Set<string> => {
@@ -35,7 +32,7 @@ export default function HomePage() {
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [catFilter, setCatFilter] = useState<Set<string>>(
-    () => (typeof window !== 'undefined' ? parseCatFilter(new URLSearchParams(window.location.search)) : new Set(['01', '02']))
+    () => (typeof window !== 'undefined' ? parseCatFilter(new URLSearchParams(window.location.search)) : new Set(CATEGORY_IDS))
   )
   const [regionFilter, setRegionFilter] = useState<Set<string>>(
     () => (typeof window !== 'undefined' ? parseRegionFilter(new URLSearchParams(window.location.search)) : new Set(ALL_REGION_IDS))
@@ -332,7 +329,7 @@ export default function HomePage() {
 
         {/* カテゴリフィルター */}
         <div className="max-w-7xl mx-auto px-4 pb-2 flex items-center gap-5">
-          {CATEGORIES.map(({ id, label }) => (
+          {CATEGORY_OPTIONS.map(({ id, label }) => (
             <label key={id} className="flex items-center gap-1.5 cursor-pointer select-none">
               <input
                 type="checkbox"

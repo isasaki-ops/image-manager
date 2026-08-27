@@ -3,19 +3,22 @@
 import Link from 'next/link'
 import type { EventWithStats } from '@/lib/supabase'
 import { REGION_LABEL, REGION_COLOR, ALL_REGION_IDS, type RegionId } from '@/lib/regions'
+import { CATEGORY_LABEL } from '@/lib/categories'
 
-const CATEGORY_LABEL: Record<string, string> = { '01': '取材', '02': '来店' }
 const CATEGORY_COLOR: Record<string, string> = {
   '01': 'bg-black text-cyan-300 border border-cyan-400/70 shadow-[0_0_6px_rgba(34,211,238,0.5)]',
   '02': 'bg-black text-fuchsia-300 border border-fuchsia-400/70 shadow-[0_0_6px_rgba(217,70,239,0.5)]',
+  '03': 'bg-black text-orange-300 border border-orange-400/70 shadow-[0_0_6px_rgba(251,146,60,0.5)]',
 }
 const CATEGORY_CODE_COLOR: Record<string, string> = {
   '01': 'text-cyan-300',
   '02': 'text-fuchsia-300',
+  '03': 'text-orange-300',
 }
 const CATEGORY_CARD_BORDER: Record<string, string> = {
   '01': 'border-cyan-400/50 shadow-[0_0_14px_rgba(34,211,238,0.18)] hover:shadow-[0_0_26px_rgba(34,211,238,0.45)] hover:border-cyan-400',
   '02': 'border-fuchsia-400/50 shadow-[0_0_14px_rgba(217,70,239,0.18)] hover:shadow-[0_0_26px_rgba(217,70,239,0.45)] hover:border-fuchsia-400',
+  '03': 'border-orange-400/50 shadow-[0_0_14px_rgba(251,146,60,0.18)] hover:shadow-[0_0_26px_rgba(251,146,60,0.45)] hover:border-orange-400',
 }
 
 export default function EventCard({

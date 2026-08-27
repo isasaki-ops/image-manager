@@ -5,6 +5,7 @@ import { searchEvents, buildRegionOrFilter } from '@/lib/search'
 import { applyImageOrder } from '@/lib/imageOrder'
 import { isValidRegionId, parseRegionParam } from '@/lib/regions'
 import { toHalfWidthAlnumSymbols } from '@/lib/textNormalize'
+import { CATEGORY_IDS } from '@/lib/categories'
 
 const PAGE_SIZE = 40
 
@@ -84,8 +85,8 @@ export async function POST(req: NextRequest) {
     if (!name?.trim()) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 })
     }
-    if (!['01', '02'].includes(category_id)) {
-      return NextResponse.json({ error: 'category_id must be 01 or 02' }, { status: 400 })
+    if (!CATEGORY_IDS.includes(category_id)) {
+      return NextResponse.json({ error: `category_id must be one of ${CATEGORY_IDS.join(', ')}` }, { status: 400 })
     }
     if (region_ids !== undefined) {
       if (!Array.isArray(region_ids) || !region_ids.every(isValidRegionId)) {

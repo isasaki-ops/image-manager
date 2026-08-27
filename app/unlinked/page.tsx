@@ -4,15 +4,22 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import BackButton from '@/components/BackButton'
 import type { ImageRecord, EventWithStats } from '@/lib/supabase'
+import { CATEGORY_LABEL, CATEGORY_IDS } from '@/lib/categories'
 
-const CATEGORY_LABEL: Record<string, string> = { '01': '取材', '02': '来店' }
 const CATEGORY_COLOR: Record<string, string> = {
   '01': 'bg-black text-cyan-300 border border-cyan-400/70',
   '02': 'bg-black text-fuchsia-300 border border-fuchsia-400/70',
+  '03': 'bg-black text-orange-300 border border-orange-400/70',
 }
 const CATEGORY_CODE_COLOR: Record<string, string> = {
   '01': 'text-cyan-300',
   '02': 'text-fuchsia-300',
+  '03': 'text-orange-300',
+}
+const CATEGORY_FILTER_ACTIVE_COLOR: Record<string, string> = {
+  '01': 'bg-cyan-400 text-black border-cyan-400',
+  '02': 'bg-fuchsia-400 text-black border-fuchsia-400',
+  '03': 'bg-orange-400 text-black border-orange-400',
 }
 
 function ImageCard({ img, onDelete }: { img: ImageRecord; onDelete?: (id: string) => void }) {
@@ -74,7 +81,7 @@ function EventPicker({
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<'01' | '02' | ''>('')
+  const [category, setCategory] = useState<'01' | '02' | '03' | ''>('')
   const [events, setEvents] = useState<EventWithStats[]>([])
   const [searching, setSearching] = useState(false)
   const [linking, setLinking] = useState(false)
@@ -148,15 +155,13 @@ function EventPicker({
     <div className="space-y-2 pt-1">
       {/* Category filter */}
       <div className="flex gap-1.5">
-        {(['', '01', '02'] as const).map((cat) => (
+        {(['', ...CATEGORY_IDS] as const).map((cat) => (
           <button
             key={cat}
             onClick={() => setCategory(cat)}
             className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
               category === cat
-                ? cat === '01' ? 'bg-cyan-400 text-black border-cyan-400'
-                  : cat === '02' ? 'bg-fuchsia-400 text-black border-fuchsia-400'
-                  : 'bg-zinc-200 text-black border-zinc-200'
+                ? cat === '' ? 'bg-zinc-200 text-black border-zinc-200' : CATEGORY_FILTER_ACTIVE_COLOR[cat]
                 : 'bg-black text-zinc-400 border-zinc-700 hover:border-zinc-500'
             }`}
           >

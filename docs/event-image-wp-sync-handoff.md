@@ -64,7 +64,7 @@ GET https://image-manager-nine.vercel.app/api/export/event-images?api_key=vYQ_Xp
 | フィールド | 型 | 説明 |
 |---|---|---|
 | `event_id` | string (UUID) | image-manager内部ID |
-| `event_code` | string | イベントコード（例: `"01-0402"`）。`01`=取材、`02`=来店 |
+| `event_code` | string | イベントコード（例: `"01-0402"`）。`01`=取材、`02`=来店、`03`=収録（2026-08〜追加。詳細は`docs/category-recode-and-shuroku-handoff.md`参照） |
 | `event_name` | string | イベント名 |
 | `region_ids` | string[] | 地方コード配列（`hokkaido`/`tohoku`/`kanto`/`tokai`/`kansai`/`kyushu`）。複数地方に該当する場合あり |
 | `region_names` | string[] | 地方の日本語名配列（`region_ids`と同じ並び） |

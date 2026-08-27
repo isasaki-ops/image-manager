@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { CATEGORY_LABEL, type CategoryId } from '@/lib/categories'
 
 interface UploadResult {
   id: string
@@ -11,14 +12,14 @@ interface UploadResult {
 interface EventOption {
   id: string
   event_code: string
-  category_id: string
+  category_id: CategoryId
   name: string
 }
 
-const CATEGORY_LABEL: Record<string, string> = { '01': '取材', '02': '来店' }
 const CATEGORY_CODE_COLOR: Record<string, string> = {
   '01': 'text-cyan-300',
   '02': 'text-fuchsia-300',
+  '03': 'text-orange-300',
 }
 
 export default function UploadForm() {

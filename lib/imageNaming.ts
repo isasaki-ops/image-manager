@@ -5,9 +5,10 @@ export function sanitizeEventNameForFile(eventName: string): string {
   return eventName.trim().replace(/[\\/:*?"<>|]/g, '_') || 'image'
 }
 
-// 取材(01)＝image01_ / 来店(02)＝image02_ / 取材かつイベント名がSS・ｓｓ・ss始まり＝imagess_
+// 取材(01)＝image01_ / 来店(02)＝image02_ / 収録(03)＝image03_ / 取材かつイベント名がSS・ｓｓ・ss始まり＝imagess_
 export function resolveFileNamePrefix(categoryId: string | null | undefined, eventName: string | null | undefined): string {
   if (categoryId === '02') return 'image02_'
+  if (categoryId === '03') return 'image03_'
   if (categoryId === '01') {
     const normalized = (eventName ?? '').normalize('NFKC').trim()
     if (/^ss/i.test(normalized)) return 'imagess_'
