@@ -51,8 +51,26 @@ export default function UploadForm() {
       setErrorMsg(`ファイルサイズは4MB以下にしてください（${(f.size / 1024 / 1024).toFixed(2)}MB）`)
       return
     }
-    setFile(f)
-    setErrorMsg('')
+
+    // 600×400ちょうどの画像は外部連携APIに乗らなくなるため直接アップロード不可（app/api/upload/route.tsで最終判定）。
+    // ここでは判定できた場合のみ即時にはじき、判定できない形式（PSD等）はサーバー側の判定に委ねる。
+    const objectUrl = URL.createObjectURL(f)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+      if (img.width === 600 && img.height === 400) {
+        setErrorMsg('600×400サイズの画像はアップロードできません。600×400以外の画像をアップロードしてください。')
+        return
+      }
+      setFile(f)
+      setErrorMsg('')
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      setFile(f)
+      setErrorMsg('')
+    }
+    img.src = objectUrl
   }
 
   const onDrop = useCallback((e: React.DragEvent) => {

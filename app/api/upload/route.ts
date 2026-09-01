@@ -67,6 +67,16 @@ export async function POST(req: NextRequest) {
       } catch { /* ignore */ }
     }
 
+    // 600×400での直接アップロードはimage_type='original'のまま登録されてしまい、
+    // 外部連携API（image_type='600x400'かつwp_file_name前提）に画像が乗らなくなるため禁止する。
+    // 600×400画像が必要な場合は原寸をアップロードし、イベント紐付け後に「600×400作成」を使う。
+    if (image_width === 600 && image_height === 400) {
+      return NextResponse.json(
+        { error: '600×400サイズの画像はアップロードできません。600×400以外の画像をアップロードしてください。' },
+        { status: 400 }
+      )
+    }
+
     const r2Url = await uploadToR2(buffer, key, resolvedType || 'application/octet-stream')
 
     // イベント選択済みの場合はイベント名ベースのファイル名を採番する
