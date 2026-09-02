@@ -5,7 +5,7 @@ import { searchEvents, buildRegionOrFilter } from '@/lib/search'
 import { applyImageOrder } from '@/lib/imageOrder'
 import { isValidRegionId, parseRegionParam } from '@/lib/regions'
 import { toHalfWidthAlnumSymbols } from '@/lib/textNormalize'
-import { CATEGORY_IDS } from '@/lib/categories'
+import { CATEGORY_IDS, parseCategoryParam } from '@/lib/categories'
 
 const PAGE_SIZE = 40
 
@@ -15,14 +15,14 @@ export async function GET(req: NextRequest) {
     const query = searchParams.get('q')?.trim()
     const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10))
     const limit = Math.min(100, parseInt(searchParams.get('limit') ?? String(PAGE_SIZE), 10))
-    const categoryId = searchParams.get('category') || undefined
+    const categoryIds = parseCategoryParam(searchParams.get('category'))
     const { regionIds: regionFilter, includeNoneRegion } = parseRegionParam(searchParams.get('region'))
 
     let events
     let hasMore = false
 
     if (query) {
-      events = await searchEvents(query, 100, { categoryId, regionIds: regionFilter, includeNoneRegion })
+      events = await searchEvents(query, 100, { categoryIds, regionIds: regionFilter, includeNoneRegion })
     } else {
       let q = getSupabaseAdmin()
         .from('events')
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
 
-      if (categoryId) q = q.eq('category_id', categoryId)
+      if (categoryIds && categoryIds.length > 0) q = q.in('category_id', categoryIds)
       const regionOr = buildRegionOrFilter(regionFilter, includeNoneRegion)
       if (regionOr) q = q.or(regionOr)
 

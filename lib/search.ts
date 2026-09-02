@@ -34,9 +34,9 @@ export async function searchImages(
 export async function searchEvents(
   query: string,
   limit: number = 20,
-  options?: { categoryId?: string; regionIds?: string[]; includeNoneRegion?: boolean }
+  options?: { categoryIds?: string[]; regionIds?: string[]; includeNoneRegion?: boolean }
 ): Promise<Event[]> {
-  return textSearchEvents(query, limit, options?.categoryId, options?.regionIds, options?.includeNoneRegion)
+  return textSearchEvents(query, limit, options?.categoryIds, options?.regionIds, options?.includeNoneRegion)
 }
 
 // 地方の絞り込み用ORフィルタ文字列を組み立てる（region_ids配列との重なり or 「設定なし」＝空配列一致）
@@ -104,7 +104,7 @@ async function textSearchImages(query: string, limit: number): Promise<SearchRes
 async function textSearchEvents(
   query: string,
   limit: number,
-  categoryId?: string,
+  categoryIds?: string[],
   regionIds?: string[],
   includeNoneRegion?: boolean
 ): Promise<Event[]> {
@@ -122,7 +122,7 @@ async function textSearchEvents(
     .order('created_at', { ascending: false })
     .limit(limit)
 
-  if (categoryId) q = q.eq('category_id', categoryId)
+  if (categoryIds && categoryIds.length > 0) q = q.in('category_id', categoryIds)
   const regionOr = buildRegionOrFilter(regionIds, includeNoneRegion)
   if (regionOr) q = q.or(regionOr)
 

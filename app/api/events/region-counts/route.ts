@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { NONE_REGION_PARAM } from '@/lib/regions'
+import { parseCategoryParam } from '@/lib/categories'
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const categoryId = searchParams.get('category') || undefined
+    const categoryIds = parseCategoryParam(searchParams.get('category'))
 
     let q = getSupabaseAdmin().from('events').select('region_ids')
-    if (categoryId) q = q.eq('category_id', categoryId)
+    if (categoryIds && categoryIds.length > 0) q = q.in('category_id', categoryIds)
 
     const { data, error } = await q
 

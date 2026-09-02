@@ -12,8 +12,9 @@ const PAGE_SIZE = 40
 
 const parseCatFilter = (sp: URLSearchParams): Set<string> => {
   const cat = sp.get('cat')
-  if (cat && (CATEGORY_IDS as readonly string[]).includes(cat)) return new Set([cat])
-  return new Set(CATEGORY_IDS)
+  if (!cat) return new Set(CATEGORY_IDS)
+  const ids = cat.split(',').filter((id) => (CATEGORY_IDS as readonly string[]).includes(id))
+  return ids.length > 0 ? new Set(ids) : new Set(CATEGORY_IDS)
 }
 
 const parseRegionFilter = (sp: URLSearchParams): Set<string> => {
@@ -51,7 +52,7 @@ export default function HomePage() {
   )
 
   const buildCategoryParam = (filter: Set<string>) =>
-    filter.size === 1 ? [...filter][0] : undefined
+    filter.size >= CATEGORY_IDS.length ? undefined : [...filter].join(',')
 
   const buildRegionParam = (filter: Set<string>): string | undefined => {
     const realSelected = [...filter].filter((id) => id !== NONE_REGION_PARAM)
@@ -85,7 +86,7 @@ export default function HomePage() {
       const categoryParam = buildCategoryParam(filter)
       const regionParam = buildRegionParam(regFilter)
       const filterSuffix =
-        (categoryParam ? `&category=${categoryParam}` : '') +
+        (categoryParam ? `&category=${encodeURIComponent(categoryParam)}` : '') +
         (regionParam ? `&region=${encodeURIComponent(regionParam)}` : '')
       const url = query
         ? `/api/events?q=${encodeURIComponent(query)}${filterSuffix}`
@@ -114,7 +115,7 @@ export default function HomePage() {
       const categoryParam = buildCategoryParam(catFilter)
       const regionParam = buildRegionParam(regionFilter)
       const filterSuffix =
-        (categoryParam ? `&category=${categoryParam}` : '') +
+        (categoryParam ? `&category=${encodeURIComponent(categoryParam)}` : '') +
         (regionParam ? `&region=${encodeURIComponent(regionParam)}` : '')
       const res = await fetch(`/api/events?offset=${offset}${filterSuffix}`)
       const data = await res.json()
@@ -143,7 +144,7 @@ export default function HomePage() {
       const categoryParam = buildCategoryParam(catFilter)
       const regionParam = buildRegionParam(regionFilter)
       const filterSuffix =
-        (categoryParam ? `&category=${categoryParam}` : '') +
+        (categoryParam ? `&category=${encodeURIComponent(categoryParam)}` : '') +
         (regionParam ? `&region=${encodeURIComponent(regionParam)}` : '')
       const collected: EventWithStats[] = []
       let more = false
@@ -231,7 +232,7 @@ export default function HomePage() {
 
   const fetchRegionCounts = useCallback(async (filter: Set<string> = catFilter) => {
     const categoryParam = buildCategoryParam(filter)
-    const suffix = categoryParam ? `?category=${categoryParam}` : ''
+    const suffix = categoryParam ? `?category=${encodeURIComponent(categoryParam)}` : ''
     try {
       const res = await fetch(`/api/events/region-counts${suffix}`)
       setRegionCounts(await res.json())
